@@ -1,22 +1,22 @@
+import json
 import logging
 import os
-import json
-from typing import Any, AsyncGenerator, Dict, List, Optional
+from collections.abc import AsyncGenerator
+from typing import Any
 
 import httpx
-from httpx_sse import aconnect_sse
-
+from authenticated_httpx import create_authenticated_client
 from fastapi import FastAPI
-from fastapi.responses import StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from google.genai import types as genai_types
+from httpx_sse import aconnect_sse
 from opentelemetry import trace
 from opentelemetry.exporter.cloud_trace import CloudTraceSpanExporter
 from opentelemetry.sdk.trace import TracerProvider, export
 from pydantic import BaseModel
 
-from authenticated_httpx import create_authenticated_client
 
 class Feedback(BaseModel):
     score: float
@@ -51,7 +51,7 @@ if not agent_server_url:
 else:
     agent_server_url = agent_server_url.rstrip("/")
 
-clients: Dict[str, httpx.AsyncClient] = {}
+clients: dict[str, httpx.AsyncClient] = {}
 
 async def get_client(agent_server_origin: str) -> httpx.AsyncClient:
     global clients
@@ -59,7 +59,7 @@ async def get_client(agent_server_origin: str) -> httpx.AsyncClient:
         clients[agent_server_origin] = create_authenticated_client(agent_server_origin)
     return clients[agent_server_origin]
 
-async def create_session(agent_server_origin: str, agent_name: str, user_id: str) -> Dict[str, Any]:
+async def create_session(agent_server_origin: str, agent_name: str, user_id: str) -> dict[str, Any]:
     httpx_client = await get_client(agent_server_origin)
     headers=[
         ("Content-Type", "application/json")
@@ -72,7 +72,7 @@ async def create_session(agent_server_origin: str, agent_name: str, user_id: str
     session_response.raise_for_status()
     return session_response.json()
 
-async def get_session(agent_server_origin: str, agent_name: str, user_id: str, session_id: str) -> Optional[Dict[str, Any]]:
+async def get_session(agent_server_origin: str, agent_name: str, user_id: str, session_id: str) -> dict[str, Any] | None:
     httpx_client = await get_client(agent_server_origin)
     headers=[
         ("Content-Type", "application/json")
@@ -88,7 +88,7 @@ async def get_session(agent_server_origin: str, agent_name: str, user_id: str, s
     return session_response.json()
 
 
-async def list_agents(agent_server_origin: str) -> List[str]:
+async def list_agents(agent_server_origin: str) -> list[str]:
     httpx_client = await get_client(agent_server_origin)
     headers=[
         ("Content-Type", "application/json")
@@ -107,7 +107,7 @@ async def list_agents(agent_server_origin: str) -> List[str]:
 
 async def query_adk_sever(
         agent_server_origin: str, agent_name: str, user_id: str, message: str, session_id
-) -> AsyncGenerator[Dict[str, Any], None]:
+) -> AsyncGenerator[dict[str, Any]]:
     httpx_client = await get_client(agent_server_origin)
     request = {
         "appName": agent_name,
@@ -145,7 +145,7 @@ async def query_adk_sever(
 class SimpleChatRequest(BaseModel):
     message: str
     user_id: str = "test_user"
-    session_id: Optional[str] = None
+    session_id: str | None = None
 
 @app.post("/api/chat_stream")
 async def chat_stream(request: SimpleChatRequest):
@@ -188,7 +188,7 @@ async def chat_stream(request: SimpleChatRequest):
             elif event["author"] == "content_builder":
                  yield json.dumps({"type": "progress", "text": "✍️ Content Builder is writing the course..."}) + "\n"
             # Accumulate final text
-            if "content" in event and event["content"]:
+            if event.get("content"):
                 content = genai_types.Content.model_validate(event["content"])
                 for part in content.parts: # type: ignore
                     if part.text:

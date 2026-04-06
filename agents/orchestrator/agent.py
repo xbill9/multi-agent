@@ -1,13 +1,14 @@
-import os
 import json
-from typing import AsyncGenerator
-from google.adk.agents import BaseAgent, LoopAgent, SequentialAgent
-from google.adk.agents.remote_a2a_agent import RemoteA2aAgent
-from google.adk.events import Event, EventActions
-from google.adk.agents.invocation_context import InvocationContext
-from google.adk.agents.callback_context import CallbackContext
+import os
+from collections.abc import AsyncGenerator
 
 from authenticated_httpx import create_authenticated_client
+from google.adk.agents import BaseAgent, LoopAgent, SequentialAgent
+from google.adk.agents.callback_context import CallbackContext
+from google.adk.agents.invocation_context import InvocationContext
+from google.adk.agents.remote_a2a_agent import RemoteA2aAgent
+from google.adk.events import Event, EventActions
+
 
 # --- Callbacks ---
 def create_save_output_callback(key: str):
@@ -80,7 +81,7 @@ class EscalationChecker(BaseAgent):
 
     async def _run_async_impl(
         self, ctx: InvocationContext
-    ) -> AsyncGenerator[Event, None]:
+    ) -> AsyncGenerator[Event]:
         # Retrieve the feedback saved by the Judge
         feedback = ctx.session.state.get("judge_feedback")
         print(f"[EscalationChecker] Feedback: {feedback}")

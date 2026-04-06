@@ -13,18 +13,15 @@
 # limitations under the License.
 
 import asyncio
-import os
 import logging
+import os
 import sys
-import typing
 import warnings
 
 import click
 import uvicorn
-
 from google.adk.cli import fast_api
 from google.adk.cli.utils import logs
-
 
 warnings.filterwarnings(
     "ignore",
@@ -168,18 +165,18 @@ def main(
     agents_dir: str,
     host: str,
     port: int,
-    allow_origins: typing.Optional[typing.List[str]],
-    eval_storage_uri: typing.Optional[str] = None,
+    allow_origins: list[str] | None,
+    eval_storage_uri: str | None = None,
     verbose: bool = False,
     log_level: str = "INFO",
     trace_to_cloud: bool = False,
     otel_to_cloud: bool = False,
-    session_service_uri: typing.Optional[str] = None,
-    artifact_service_uri: typing.Optional[str] = None,
-    memory_service_uri: typing.Optional[str] = None,
-    with_web_ui: typing.Optional[bool] = None,
-    url_prefix: typing.Optional[str] = None,
-    extra_plugins: typing.Optional[typing.List[str]] = None,
+    session_service_uri: str | None = None,
+    artifact_service_uri: str | None = None,
+    memory_service_uri: str | None = None,
+    with_web_ui: bool | None = None,
+    url_prefix: str | None = None,
+    extra_plugins: list[str] | None = None,
     a2a: bool = False
 ):
     """Starts a FastAPI server for agents.
@@ -200,10 +197,11 @@ def main(
 
     if a2a:
         from pathlib import Path
+
         from a2a.types import AgentCapabilities
         from google.adk.a2a.utils.agent_card_builder import AgentCardBuilder
-        from google.adk.cli.utils.agent_loader import AgentLoader
         from google.adk.apps import App
+        from google.adk.cli.utils.agent_loader import AgentLoader
 
         loader = AgentLoader(agents_dir)
         agents = loader.list_agents()
@@ -248,8 +246,8 @@ def main(
         extra_plugins=extra_plugins,
     )
     if a2a:
-        from starlette.middleware.base import BaseHTTPMiddleware
         from a2a_utils import a2a_card_dispatch
+        from starlette.middleware.base import BaseHTTPMiddleware
         app.add_middleware(BaseHTTPMiddleware, dispatch=a2a_card_dispatch)
     for fd in files_to_delete:
         fd.unlink()

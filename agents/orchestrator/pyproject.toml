@@ -2,7 +2,7 @@
 name = "orchestrator-builder-agent"
 version = "0.1.0"
 description = "Orchestrator microservice agent"
-requires-python = ">=3.10,<3.14"
+requires-python = ">=3.13"
 dependencies = [
     "google-adk>=1.27.4,<2.0.0",
     "a2a-sdk==0.3.*",
@@ -12,10 +12,6 @@ dependencies = [
     "opentelemetry-exporter-gcp-trace==1.11.0",
 ]
 
-[[tool.uv.index]]
-name = "pypi"
-url = "https://pypi.org/simple"
-default = true
 
 [build-system]
 requires = ["hatchling"]

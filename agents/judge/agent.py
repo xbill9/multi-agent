@@ -1,8 +1,7 @@
 from typing import Literal
-from google.adk.agents import Agent
-from google.adk.apps.app import App
-from pydantic import BaseModel, Field
 
+from google.adk.agents import Agent
+from pydantic import BaseModel, Field
 
 MODEL = "gemini-2.5-pro"
 

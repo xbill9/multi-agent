@@ -2,11 +2,11 @@
 import subprocess
 from urllib.parse import urlparse
 
-from google.auth.transport.requests import AuthorizedSession, Request
+import httpx
 from google.auth.exceptions import DefaultCredentialsError
+from google.auth.transport.requests import AuthorizedSession, Request
 from google.oauth2.credentials import Credentials
 from google.oauth2.id_token import fetch_id_token_credentials
-import httpx
 
 DEFAULT_TIMEOUT = 600.0
 

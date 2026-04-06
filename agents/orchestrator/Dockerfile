@@ -1,33 +1,17 @@
-FROM python:3.12-slim
+FROM python:3.13-slim
 
-# Install uv
-COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
-
-# Install the project into /app
-COPY . /app
 WORKDIR /app
 
-# Allow statements and log messages to immediately appear in the logs
-ENV PYTHONUNBUFFERED=1
-
-# Prepare virtual environment path
-ENV VIRTUAL_ENV=/opt/venv
-ENV PATH="/opt/venv/bin:$PATH"
-
 # Install dependencies
-RUN uv venv /opt/venv && \
-    . /opt/venv/bin/activate && \
-    if [ -f pyproject.toml ]; then \
-        uv sync --active; \
-    elif [ -f requirements.txt ]; then \
-        uv pip install -U -r requirements.txt; \
-    else \
-        echo "Neither pyproject.toml nor requirements.txt found" && exit 1; \
-    fi
+COPY pyproject.toml .
+RUN pip install --no-cache-dir .
 
-# Set host and port
+# Copy source code
+COPY . .
+
+# Environment variables
+ENV PYTHONUNBUFFERED=1
 ENV HOST 0.0.0.0
-EXPOSE $PORT
 
-# Run ADK API Server
+# Run
 CMD ["./run.sh"]

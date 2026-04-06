@@ -1,0 +1,24 @@
+# Core Dependencies
+google-adk
+a2a-sdk
+fastapi
+pydantic
+uvicorn
+click
+httpx
+httpx_sse
+google-genai
+google-cloud-logging
+google-cloud-aiplatform[evaluation]
+opentelemetry-exporter-gcp-trace
+psycopg2-binary
+
+# Dev Dependencies
+pytest
+pytest-asyncio
+nest-asyncio
+ruff
+mypy
+codespell
+types-pyyaml
+types-requests

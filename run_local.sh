@@ -12,19 +12,19 @@ export GOOGLE_API_KEY="<your-key-here>" # Use if not using Vertex AI
 
 echo "Starting Researcher Agent on port 8001..."
 pushd agents/researcher
-uv run adk_app.py --host 0.0.0.0 --port 8001 --a2a . &
+python3 adk_app.py --host 0.0.0.0 --port 8001 --a2a . &
 RESEARCHER_PID=$!
 popd
 
 echo "Starting Judge Agent on port 8002..."
 pushd agents/judge
-uv run adk_app.py --host 0.0.0.0 --port 8002 --a2a . &
+python3 adk_app.py --host 0.0.0.0 --port 8002 --a2a . &
 JUDGE_PID=$!
 popd
 
 echo "Starting Content Builder Agent on port 8003..."
 pushd agents/content_builder
-uv run adk_app.py --host 0.0.0.0 --port 8003 --a2a . &
+python3 adk_app.py --host 0.0.0.0 --port 8003 --a2a . &
 CONTENT_BUILDER_PID=$!
 popd
 
@@ -34,7 +34,7 @@ export CONTENT_BUILDER_AGENT_CARD_URL=http://localhost:8003/a2a/agent/.well-know
 
 echo "Starting Orchestrator Agent on port 8004..."
 pushd agents/orchestrator
-uv run adk_app.py --host 0.0.0.0 --port 8004 . &
+python3 adk_app.py --host 0.0.0.0 --port 8004 . &
 ORCHESTRATOR_PID=$!
 popd
 
@@ -45,7 +45,7 @@ echo "Starting Orchestrator Agent on port 8000..."
 pushd app
 export AGENT_SERVER_URL=http://localhost:8004
 
-uv run uvicorn main:app --host 0.0.0.0 --port 8000 &
+python3 -m uvicorn main:app --host 0.0.0.0 --port 8000 &
 BACKEND_PID=$!
 popd
 

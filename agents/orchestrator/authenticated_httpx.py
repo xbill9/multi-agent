@@ -2,12 +2,13 @@
 import subprocess
 from urllib.parse import urlparse
 
+import httpx
 from google.adk.agents.remote_a2a_agent import DEFAULT_TIMEOUT
-from google.auth.transport.requests import AuthorizedSession, Request
 from google.auth.exceptions import DefaultCredentialsError
+from google.auth.transport.requests import AuthorizedSession, Request
 from google.oauth2.credentials import Credentials
 from google.oauth2.id_token import fetch_id_token_credentials
-import httpx
+
 
 def create_authenticated_client(
         remote_service_url: str,

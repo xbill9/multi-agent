@@ -1,7 +1,6 @@
 from google.adk.agents import Agent
 from google.adk.tools.google_search_tool import google_search
 
-
 MODEL = "gemini-2.5-pro"
 
 # TODO: Define the Researcher Agent

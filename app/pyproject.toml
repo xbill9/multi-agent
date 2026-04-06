@@ -2,7 +2,7 @@
 name = "course-creation-app"
 version = "0.1.0"
 description = "Course Creation Web App"
-requires-python = ">=3.10,<3.14"
+requires-python = ">=3.13"
 dependencies = [
     "uvicorn==0.40.0",
     "fastapi==0.123.*",
@@ -13,10 +13,6 @@ dependencies = [
     "opentelemetry-exporter-gcp-trace==1.11.0",
 ]
 
-[[tool.uv.index]]
-name = "pypi"
-url = "https://pypi.org/simple"
-default = true
 
 [build-system]
 requires = ["hatchling"]

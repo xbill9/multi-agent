@@ -16,17 +16,17 @@ import json
 import subprocess
 from urllib.parse import urlparse
 
+import httpx
 from a2a.utils.constants import (
     AGENT_CARD_WELL_KNOWN_PATH,
     EXTENDED_AGENT_CARD_PATH,
-    PREV_AGENT_CARD_WELL_KNOWN_PATH
+    PREV_AGENT_CARD_WELL_KNOWN_PATH,
 )
 from google.adk.agents.remote_a2a_agent import DEFAULT_TIMEOUT
-from google.auth.transport.requests import AuthorizedSession, Request
 from google.auth.exceptions import DefaultCredentialsError
+from google.auth.transport.requests import AuthorizedSession, Request
 from google.oauth2.credentials import Credentials
 from google.oauth2.id_token import fetch_id_token_credentials
-import httpx
 from starlette.datastructures import URL
 from starlette.middleware.base import RequestResponseEndpoint
 from starlette.requests import Request as StarletteRequest
