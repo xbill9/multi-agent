@@ -7,7 +7,6 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Merriweather:wght@300;400;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="style.css">
 </head>
 <body class="course-page">
     <div class="course-container">
@@ -31,48 +30,6 @@
             </main>
         </div>
     </div>
-    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-    <script>
-        document.addEventListener('DOMContentLoaded', () => {
-            const courseData = localStorage.getItem('currentCourse');
-            if (!courseData) {
-                window.location.href = '/';
-                return;
-            }
-            
-            const contentContainer = document.getElementById('course-content');
-            const tocList = document.getElementById('toc-list');
-            
-            // Render Markdown
-            contentContainer.innerHTML = marked.parse(courseData);
-            
-            // Generate TOC from h2 elements
-            const headings = contentContainer.querySelectorAll('h2');
-            if (headings.length === 0) {
-                document.querySelector('.course-sidebar').style.display = 'none';
-                document.querySelector('.course-layout').style.justifyContent = 'center';
-            } else {
-                headings.forEach((heading, index) => {
-                    const id = 'section-' + index;
-                    heading.id = id;
-                    
-                    const li = document.createElement('li');
-                    const a = document.createElement('a');
-                    a.href = '#' + id;
-                    a.textContent = heading.textContent;
-                    a.classList.add('toc-link');
-                    
-                    // Simple active state on click
-                    a.addEventListener('click', () => {
-                        document.querySelectorAll('.toc-link').forEach(l => l.classList.remove('active'));
-                        a.classList.add('active');
-                    });
-
-                    li.appendChild(a);
-                    tocList.appendChild(li);
-                });
-            }
-        });
-    </script>
+    <script type="module" src="course.ts"></script>
 </body>
 </html>

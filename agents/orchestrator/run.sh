@@ -44,7 +44,10 @@ if [[ "${ADDITIONAL_ADK_PARAMETERS}" != "" ]]; then
     echo "Additional parameters: ${ADDITIONAL_ADK_PARAMETERS}"
 fi
 
-python3 adk_app.py --host "0.0.0.0" --port ${PORT} \
+# Run using the shared package instead of the local symlink
+export PYTHONPATH="${SCRIPT_DIR}/../../:${PYTHONPATH}"
+python3 -m shared.adk_app --host "0.0.0.0" --port ${PORT} \
+    --a2a \
     --trace_to_cloud \
     ${SESSION_SERVICE_PARAMETER} \
     ${MEMORY_SERVICE_PARAMETER} \

@@ -17,19 +17,20 @@ import logging
 import os
 import sys
 import warnings
+from pathlib import Path
 
 import click
 import uvicorn
+from a2a_utils import a2a_card_dispatch
 from google.adk.cli import fast_api
-from google.adk.cli.utils import logs
+from logging_config import get_uvicorn_log_config, setup_logging
+from starlette.middleware.base import BaseHTTPMiddleware
 
-warnings.filterwarnings(
-    "ignore",
-    message=r".*\[EXPERIMENTAL\].*",
-    category=UserWarning
-)
+# Suppress experimental warnings
+warnings.filterwarnings("ignore", message=r".*\[EXPERIMENTAL\].*", category=UserWarning)
 os.environ["ADK_SUPPRESS_EXPERIMENTAL_FEATURE_WARNINGS"] = "True"
 
+# Ensure shared directory is in path
 sys.path.insert(0, os.path.dirname(__file__))
 
 LOG_LEVELS = click.Choice(
@@ -37,130 +38,30 @@ LOG_LEVELS = click.Choice(
     case_sensitive=False,
 )
 
+
 @click.command()
 @click.argument(
     "agents_dir",
-    type=click.Path(
-        exists=True, dir_okay=True, file_okay=False, resolve_path=True
-    ),
+    type=click.Path(exists=True, dir_okay=True, file_okay=False, resolve_path=True),
     default=os.getcwd(),
 )
+@click.option("--host", type=str, default="127.0.0.1", show_default=True)
 @click.option(
-    "--host",
-    type=str,
-    help="Optional. The binding host of the server",
-    default="127.0.0.1",
-    show_default=True,
+    "--port", type=int, default=int(os.getenv("PORT", 8000)), show_default=True
 )
-@click.option(
-    "--port",
-    type=int,
-    help="Optional. The port of the server",
-    default=os.getenv("PORT", 8000),
-    show_default=True
-)
-@click.option(
-    "--allow_origins",
-    help="Optional. Any additional origins to allow for CORS.",
-    multiple=True,
-)
-@click.option(
-    "--eval_storage_uri",
-    type=str,
-    help=(
-        "Optional. The evals storage URI to store agent evals,"
-        " supported URIs: gs://<bucket name>."
-    ),
-    default=None,
-)
-@click.option(
-    "-v",
-    "--verbose",
-    is_flag=True,
-    show_default=True,
-    default=False,
-    help="Enable verbose (DEBUG) logging. Shortcut for --log_level DEBUG.",
-)
-@click.option(
-    "--log_level",
-    type=LOG_LEVELS,
-    default="INFO",
-    help="Optional. Set the logging level",
-)
-@click.option(
-    "--trace_to_cloud",
-    is_flag=True,
-    show_default=True,
-    default=False,
-    help="Optional. Whether to enable cloud trace for telemetry.",
-)
-@click.option(
-    "--otel_to_cloud",
-    is_flag=True,
-    show_default=True,
-    default=False,
-    help=(
-        "Optional. Whether to write OTel data to Google Cloud"
-        " Observability services - Cloud Trace and Cloud Logging."
-    ),
-)
-@click.option(
-    "--session_service_uri",
-    help=(
-        """Optional. The URI of the session service.
-      - Use 'agentengine://<agent_engine>' to connect to Agent Engine
-        sessions. <agent_engine> can either be the full qualified resource
-        name 'projects/abc/locations/us-central1/reasoningEngines/123' or
-        the resource id '123'.
-      - Use 'sqlite://<path_to_sqlite_file>' to connect to an aio-sqlite
-        based session service, which is good for local development.
-      - Use 'postgresql://<user>:<password>@<host>:<port>/<database_name>'
-        to connect to a PostgreSQL DB.
-      - See https://docs.sqlalchemy.org/en/20/core/engines.html#backend-specific-urls
-        for more details on other database URIs supported by SQLAlchemy."""
-    ),
-)
-@click.option(
-    "--artifact_service_uri",
-    type=str,
-    help=(
-        "Optional. The URI of the artifact service,"
-        " supported URIs: gs://<bucket name> for GCS artifact service."
-    ),
-    default=None,
-)
-@click.option(
-    "--memory_service_uri",
-    type=str,
-    help=("""Optional. The URI of the memory service."""),
-    default=None,
-)
-@click.option(
-    "--with_web_ui",
-    is_flag=True,
-    show_default=True,
-    default=False,
-    help="Optional. Whether to enable ADK Web UI.",
-)
-@click.option(
-    "--url_prefix",
-    type=str,
-    default=None,
-    help="Optional. The URL prefix for the ADK API server.",
-)
-@click.option(
-    "--extra_plugins",
-    multiple=True,
-    default=None,
-    help="Optional. Extra plugins to load.",
-)
-@click.option(
-    "--a2a",
-    is_flag=True,
-    show_default=True,
-    default=False,
-    help="Optional. Whether to enable A2A endpoint.",
-)
+@click.option("--allow_origins", multiple=True)
+@click.option("--eval_storage_uri", type=str, default=None)
+@click.option("-v", "--verbose", is_flag=True, default=False)
+@click.option("--log_level", type=LOG_LEVELS, default="INFO")
+@click.option("--trace_to_cloud", is_flag=True, default=False)
+@click.option("--otel_to_cloud", is_flag=True, default=False)
+@click.option("--session_service_uri", help="URI for session persistence.")
+@click.option("--artifact_service_uri", type=str, default=None)
+@click.option("--memory_service_uri", type=str, default=None)
+@click.option("--with_web_ui", is_flag=True, default=False)
+@click.option("--url_prefix", type=str, default=None)
+@click.option("--extra_plugins", multiple=True, default=None)
+@click.option("--a2a", is_flag=True, default=False, help="Enable A2A endpoints.")
 def main(
     agents_dir: str,
     host: str,
@@ -174,99 +75,109 @@ def main(
     session_service_uri: str | None = None,
     artifact_service_uri: str | None = None,
     memory_service_uri: str | None = None,
-    with_web_ui: bool | None = None,
+    with_web_ui: bool = False,
     url_prefix: str | None = None,
     extra_plugins: list[str] | None = None,
-    a2a: bool = False
+    a2a: bool = False,
 ):
-    """Starts a FastAPI server for agents.
-
-    AGENTS_DIR: The directory of agents, where each sub-directory is a single
-    agent.
-    """
+    """Starts a FastAPI server for ADK agents."""
     if verbose:
         log_level = "DEBUG"
 
-    logs.setup_adk_logger(getattr(logging, log_level.upper()))
+    # Standardized logging setup
+    setup_logging(os.path.basename(agents_dir), log_level)
 
-    reload = False
-    reload_agents = False
+    files_to_cleanup = []
+    folders_to_cleanup = []
 
-    folders_to_delete = []
-    files_to_delete = []
+    try:
+        if a2a:
+            _prepare_a2a_agent_cards(agents_dir, files_to_cleanup, folders_to_cleanup)
 
-    if a2a:
-        from pathlib import Path
+        app = fast_api.get_fast_api_app(
+            agents_dir=agents_dir,
+            session_service_uri=session_service_uri,
+            artifact_service_uri=artifact_service_uri,
+            memory_service_uri=memory_service_uri,
+            eval_storage_uri=eval_storage_uri,
+            allow_origins=allow_origins,
+            web=with_web_ui,
+            trace_to_cloud=trace_to_cloud,
+            otel_to_cloud=otel_to_cloud,
+            a2a=a2a,
+            host=host,
+            port=port,
+            url_prefix=url_prefix,
+            extra_plugins=extra_plugins,
+        )
 
-        from a2a.types import AgentCapabilities
-        from google.adk.a2a.utils.agent_card_builder import AgentCardBuilder
-        from google.adk.apps import App
-        from google.adk.cli.utils.agent_loader import AgentLoader
+        if a2a:
+            app.add_middleware(BaseHTTPMiddleware, dispatch=a2a_card_dispatch)
 
-        loader = AgentLoader(agents_dir)
-        agents = loader.list_agents()
-        if len(agents) == 0:
-            agents = ["agent"]
-        for agent_name in agents:
-            agent_card_dir = Path(agents_dir) / agent_name
-            if not agent_card_dir.exists():
-                agent_card_dir.mkdir(exist_ok=True)
-                folders_to_delete.append(agent_card_dir)
-            card_file = agent_card_dir / "agent.json"
-            if card_file.exists():
+        config = uvicorn.Config(
+            app=app,
+            host=host,
+            port=port,
+            reload=False,
+            log_config=get_uvicorn_log_config(log_level),
+        )
+        server = uvicorn.Server(config)
+        server.run()
+
+    finally:
+        # Robust cleanup of temporary agent cards
+        for f in files_to_cleanup:
+            try:
+                Path(f).unlink(missing_ok=True)
+            except Exception as e:
+                logging.warning(f"Failed to cleanup file {f}: {e}")
+
+        for d in folders_to_cleanup:
+            try:
+                Path(d).rmdir()
+            except Exception as e:
+                logging.debug(f"Failed to cleanup folder {d}: {e}")
+
+
+def _prepare_a2a_agent_cards(
+    agents_dir: str, files_to_cleanup: list, folders_to_cleanup: list
+):
+    """Generates temporary agent.json cards for A2A discovery if they don't exist."""
+    from a2a.types import AgentCapabilities
+    from google.adk.a2a.utils.agent_card_builder import AgentCardBuilder
+    from google.adk.apps import App
+    from google.adk.cli.utils.agent_loader import AgentLoader
+
+    loader = AgentLoader(agents_dir)
+    agents = loader.list_agents() or ["agent"]
+
+    for agent_name in agents:
+        agent_path = Path(agents_dir) / agent_name
+        if not agent_path.exists():
+            agent_path.mkdir(exist_ok=True)
+            folders_to_cleanup.append(agent_path)
+
+        card_file = agent_path / "agent.json"
+        if not card_file.exists():
+            try:
+                agent = loader.load_agent(agent_name)
+            except Exception as e:
+                logging.debug(f"Skipping {agent_name}: not a valid agent directory ({e})")
                 continue
-            files_to_delete.append(card_file)
-            agent = loader.load_agent(agent_name)
+
             if isinstance(agent, App):
                 agent = agent.root_agent
+
+            # Temporary URL for building the card; rewritten by middleware later
             card_builder = AgentCardBuilder(
                 agent=agent,
                 rpc_url=f"http://127.0.0.1/a2a/{agent_name}",
-                capabilities=AgentCapabilities(streaming=True)
+                capabilities=AgentCapabilities(streaming=True),
             )
             agent_card = asyncio.run(card_builder.build())
-            card_json = agent_card.model_dump_json(indent=2)
-            card_file.write_text(card_json)
-
-    app = fast_api.get_fast_api_app(
-        agents_dir=agents_dir,
-        session_service_uri=session_service_uri,
-        artifact_service_uri=artifact_service_uri,
-        memory_service_uri=memory_service_uri,
-        eval_storage_uri=eval_storage_uri,
-        allow_origins=allow_origins,
-        web=with_web_ui or False,
-        trace_to_cloud=trace_to_cloud,
-        otel_to_cloud=otel_to_cloud,
-        a2a=a2a,
-        host=host,
-        port=port,
-        url_prefix=url_prefix,
-        reload_agents=reload_agents,
-        extra_plugins=extra_plugins,
-    )
-    if a2a:
-        from a2a_utils import a2a_card_dispatch
-        from starlette.middleware.base import BaseHTTPMiddleware
-        app.add_middleware(BaseHTTPMiddleware, dispatch=a2a_card_dispatch)
-    for fd in files_to_delete:
-        fd.unlink()
-    for fd in folders_to_delete:
-        try:
-            fd.rmdir()
-        except OSError:
-            pass
-    config = uvicorn.Config(
-        app=app,
-        host=host,
-        port=port,
-        reload=reload,
-        log_level=log_level.lower(),
-    )
-    server = uvicorn.Server(config)
-    server.run()
+            card_file.write_text(agent_card.model_dump_json(indent=2))
+            files_to_cleanup.append(card_file)
 
 
-################################################################################
 if __name__ == "__main__":
     main()

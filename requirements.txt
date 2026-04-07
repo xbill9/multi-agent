@@ -4,12 +4,12 @@ a2a-sdk
 fastapi
 pydantic
 uvicorn
+python-json-logger
 click
 httpx
 httpx_sse
 google-genai
 google-cloud-logging
-google-cloud-aiplatform[evaluation]
 opentelemetry-exporter-gcp-trace
 psycopg2-binary
 

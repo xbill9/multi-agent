@@ -1,0 +1,6 @@
+{
+  "state": {
+    "research_findings": "The Gemini 2.5 models are the latest from Google. They offer improved reasoning and speed. Key features include large context windows and native multimodal capabilities."
+  },
+  "queries": ["Please generate a course module based on these findings."]
+}

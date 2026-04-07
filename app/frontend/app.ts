@@ -1,8 +1,10 @@
-const createForm = document.getElementById('create-form');
-const topicInput = document.getElementById('topic-input');
-const createButton = document.getElementById('create-button');
-const progressContainer = document.getElementById('progress-container');
-const statusText = document.getElementById('status-text');
+import './style.css';
+
+const createForm = document.getElementById('create-form') as HTMLFormElement;
+const topicInput = document.getElementById('topic-input') as HTMLInputElement;
+const createButton = document.getElementById('create-button') as HTMLButtonElement;
+const progressContainer = document.getElementById('progress-container') as HTMLElement;
+const statusText = document.getElementById('status-text') as HTMLElement;
 
 // Generate a random session ID for this browser session
 const sessionId = 'session-' + Math.random().toString(36).substring(2, 15);
@@ -15,18 +17,18 @@ function showProgress() {
     progressContainer.classList.remove('hidden');
 }
 
-function updateStatus(text) {
+function updateStatus(text: string) {
     statusText.textContent = text;
     
     // Simple logic to highlight steps based on text content
     document.querySelectorAll('.step').forEach(s => s.classList.remove('active'));
     
     if (text.toLowerCase().includes('research')) {
-        document.getElementById('step-researcher').classList.add('active');
+        document.getElementById('step-researcher')?.classList.add('active');
     } else if (text.toLowerCase().includes('judge') || text.toLowerCase().includes('evaluating')) {
-        document.getElementById('step-judge').classList.add('active');
+        document.getElementById('step-judge')?.classList.add('active');
     } else if (text.toLowerCase().includes('writ') || text.toLowerCase().includes('build')) {
-        document.getElementById('step-builder').classList.add('active');
+        document.getElementById('step-builder')?.classList.add('active');
     }
 }
 
@@ -53,7 +55,9 @@ createForm.addEventListener('submit', async (e) => {
             throw new Error(`HTTP error! status: ${response.status}`);
         }
 
-        const reader = response.body.getReader();
+        const reader = response.body?.getReader();
+        if (!reader) throw new Error("No reader found");
+        
         const decoder = new TextDecoder();
         let buffer = '';
 
@@ -63,7 +67,7 @@ createForm.addEventListener('submit', async (e) => {
             
             buffer += decoder.decode(value, { stream: true });
             const lines = buffer.split('\n');
-            buffer = lines.pop();
+            buffer = lines.pop() || '';
 
             for (const line of lines) {
                 if (!line.trim()) continue;

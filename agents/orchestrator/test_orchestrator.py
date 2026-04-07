@@ -20,6 +20,8 @@ async def test_escalation_checker_pass():
 
     assert len(events) == 1
     assert events[0].actions.escalate is True
+    assert "Research approved" in events[0].content.parts[0].text
+
 
 @pytest.mark.asyncio
 async def test_escalation_checker_fail():
@@ -33,15 +35,19 @@ async def test_escalation_checker_fail():
         events.append(event)
 
     assert len(events) == 1
-    # ADK actions might have None for escalate by default
+    # ADK actions might be None for escalate by default or have escalate=False
     assert events[0].actions is None or events[0].actions.escalate in (None, False)
+    assert "Research needs more work" in events[0].content.parts[0].text
+
 
 @pytest.mark.asyncio
 async def test_escalation_checker_string_pass():
     """Test that EscalationChecker handles string feedback containing 'pass'."""
     ctx = MagicMock(spec=InvocationContext)
     ctx.session = MagicMock()
-    ctx.session.state = {"judge_feedback": '{"status": "pass", "feedback": "Great job"}'}
+    ctx.session.state = {
+        "judge_feedback": '{"status": "pass", "feedback": "Great job"}'
+    }
 
     events = []
     async for event in escalation_checker._run_async_impl(ctx):
@@ -49,3 +55,4 @@ async def test_escalation_checker_string_pass():
 
     assert len(events) == 1
     assert events[0].actions.escalate is True
+    assert "Research approved" in events[0].content.parts[0].text
