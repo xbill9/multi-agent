@@ -24,13 +24,9 @@ cat <<EOF > .env
 GOOGLE_GENAI_USE_VERTEXAI=false
 GOOGLE_CLOUD_PROJECT=$PROJECT_ID
 GOOGLE_CLOUD_LOCATION=us-central1
-IMAGEN_MODEL="imagen-4.0-fast-generate-001"
 GENAI_MODEL="gemini-2.5-flash"
 GOOGLE_API_KEY=$GOOGLE_API_KEY
 GEMINI_API_KEY=$GOOGLE_API_KEY
-GEMINI_KEY=$GOOGLE_API_KEY
-MODEL_ID="gemini-3.1-flash-live-preview"
-SERVICE_NAME=biometric-scout
 EOF
 
 source .env

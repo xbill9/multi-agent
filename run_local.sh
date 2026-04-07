@@ -1,63 +1,63 @@
 #!/bin/bash
 
-# Kill any existing processes on these ports
-echo "Stopping any existing processes on ports 8000-8004..."
-lsof -ti:8000,8001,8002,8003,8004 | xargs kill -9 2>/dev/null
+# Kill any existing processes (manual cleanup first)
+echo "Stopping any existing agent and server processes..."
+pkill -9 -f "adk_app.py" 2>/dev/null || true
+pkill -9 -f "main.py" 2>/dev/null || true
+pkill -9 -f "vite" 2>/dev/null || true
 
 # Set common environment variables for local development
-export GOOGLE_CLOUD_PROJECT=$(gcloud config get-value project)
-export GOOGLE_CLOUD_LOCATION="us-central1"
-export GOOGLE_GENAI_USE_VERTEXAI="True" # Use Gemini API locally
-export GOOGLE_API_KEY="<your-key-here>" # Use if not using Vertex AI
+if [ -f ".env" ]; then
+  source .env
+fi
+export GOOGLE_CLOUD_PROJECT="${GOOGLE_CLOUD_PROJECT:-comglitn}"
+export GOOGLE_CLOUD_LOCATION="${GOOGLE_CLOUD_LOCATION:-us-central1}"
+export GOOGLE_GENAI_USE_VERTEXAI="False"
+export GOOGLE_API_KEY="${GOOGLE_API_KEY:-<your-key-here>}"
+export LOG_LEVEL=DEBUG
 
-echo "Starting Researcher Agent on port 8001..."
-pushd agents/researcher
-python3 adk_app.py --host 0.0.0.0 --port 8001 --a2a . &
-RESEARCHER_PID=$!
-popd
+# Use the Google Cloud SDK bundled Python 3.13
+PYTHON_CMD=/usr/lib/google-cloud-sdk/platform/bundledpythonunix/bin/python3
+if [ ! -f "$PYTHON_CMD" ]; then
+  PYTHON_CMD=python3
+fi
 
-echo "Starting Judge Agent on port 8002..."
-pushd agents/judge
-python3 adk_app.py --host 0.0.0.0 --port 8002 --a2a . &
-JUDGE_PID=$!
-popd
+# Ensure frontend is built once
+if [ ! -d "app/dist" ]; then
+  echo "Building frontend..."
+  pushd app/frontend > /dev/null
+  npm install --no-progress --silent
+  npm run build -- --silent
+  popd > /dev/null
+fi
 
-echo "Starting Content Builder Agent on port 8003..."
-pushd agents/content_builder
-python3 adk_app.py --host 0.0.0.0 --port 8003 --a2a . &
-CONTENT_BUILDER_PID=$!
-popd
+echo "Starting agents and servers with DEBUG logging..."
+
+nohup $PYTHON_CMD -m shared.adk_app --host 0.0.0.0 --port 8001 --a2a agents/researcher > researcher.log 2>&1 &
+nohup $PYTHON_CMD -m shared.adk_app --host 0.0.0.0 --port 8002 --a2a agents/judge > judge.log 2>&1 &
+nohup $PYTHON_CMD -m shared.adk_app --host 0.0.0.0 --port 8003 --a2a agents/content_builder > content_builder.log 2>&1 &
 
 export RESEARCHER_AGENT_CARD_URL=http://localhost:8001/a2a/agent/.well-known/agent-card.json
 export JUDGE_AGENT_CARD_URL=http://localhost:8002/a2a/agent/.well-known/agent-card.json
 export CONTENT_BUILDER_AGENT_CARD_URL=http://localhost:8003/a2a/agent/.well-known/agent-card.json
 
-echo "Starting Orchestrator Agent on port 8004..."
-pushd agents/orchestrator
-python3 adk_app.py --host 0.0.0.0 --port 8004 . &
-ORCHESTRATOR_PID=$!
-popd
+nohup $PYTHON_CMD -m shared.adk_app --host 0.0.0.0 --port 8004 agents/orchestrator > orchestrator.log 2>&1 &
 
-# Wait a bit for them to start up
+# Wait for agents to start
 sleep 5
 
-echo "Starting Orchestrator Agent on port 8000..."
-pushd app
+echo "Starting App Backend (8000)..."
 export AGENT_SERVER_URL=http://localhost:8004
+export PORT=8000
+pushd app > /dev/null
+nohup $PYTHON_CMD main.py > ../backend.log 2>&1 &
+popd > /dev/null
 
-python3 -m uvicorn main:app --host 0.0.0.0 --port 8000 &
-BACKEND_PID=$!
-popd
+pushd app/frontend > /dev/null
+nohup npm run dev -- --host 0.0.0.0 > ../../frontend.log 2>&1 &
+popd > /dev/null
 
-echo "All agents started!"
-echo "Researcher: http://localhost:8001"
-echo "Judge: http://localhost:8002"
-echo "Content Builder: http://localhost:8003"
-echo "Orchestrator: http://localhost:8004"
-echo "App Server (Frontend): http://localhost:8000"
-echo ""
-echo "Press Ctrl+C to stop all agents."
-
-# Wait for all processes
-trap "kill $RESEARCHER_PID $JUDGE_PID $CONTENT_BUILDER_PID $ORCHESTRATOR_PID $BACKEND_PID; exit" INT
-wait
+echo "All services started in background with standardized JSON DEBUG logging."
+echo "Frontend: http://localhost:5173"
+echo "Backend:  http://localhost:8000"
+echo "Logs: researcher.log, judge.log, content_builder.log, orchestrator.log, backend.log, frontend.log"

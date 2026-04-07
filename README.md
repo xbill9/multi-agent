@@ -1,83 +1,107 @@
-# course-creation-agent (Distributed)
+# AI Course Creator (Distributed Multi-Agent System)
 
-A multi-agent system built with Google's Agent Development Kit (ADK) and Agent-to-Agent (A2A) protocol. It features a team of microservice agents that research, judge, and build content, orchestrated to deliver high-quality results.
+A multi-agent system built with Google's Agent Development Kit (ADK) and Agent-to-Agent (A2A) protocol. It features a team of specialized microservice agents that research, judge, and build content, orchestrated to deliver high-quality educational modules.
 
 ## Architecture
 
-This project uses a distributed microservices architecture where each agent runs in its own container and communicates via A2A:
+This project uses a distributed microservices architecture where each agent runs in its own container and communicates via the A2A protocol:
 
-*   **Orchestrator Service (`orchestrator`):** The main entry point. It manages the workflow using `LoopAgent` and `SequentialAgent`, and connects to other agents using `RemoteA2aAgent`.
-*   **Researcher Service (`researcher`):** A standalone agent that gathers information using Google Search.
-*   **Judge Service (`judge`):** A standalone agent that evaluates research quality.
-*   **Content Builder Service (`content_builder`):** A standalone agent that compiles the final course.
-*   **Agent App (`app`):** A web application that queries the Orchestrator agent, displays progress and results.
+*   **Orchestrator Service (`agents/orchestrator`):** The main entry point for agent logic. It manages the workflow using `LoopAgent` and `SequentialAgent`, and connects to other agents using `RemoteA2aAgent`. It includes an **EscalationChecker** to determine when to break the research loop.
+*   **Researcher Service (`agents/researcher`):** A standalone agent that gathers information using the `google_search` tool.
+*   **Judge Service (`agents/judge`):** A standalone agent that evaluates research quality against a Pydantic schema.
+*   **Content Builder Service (`agents/content_builder`):** A standalone agent that compiles the final course module in Markdown.
+*   **Web App (`app/`):** A FastAPI backend with a React frontend that streams agent events to the user using Server-Sent Events (SSE).
 
 ## Project Structure
 
 ```
-course-creation-agent/
+multi-agent/
 ├── agents/
-    ├── orchestrator/        # Main Orchestrator agent, ADK API Service
-    ├── researcher/          # Researcher agent, A2A microservice
-    ├── judge/               # Judge agent, A2A microservice
-    └── content_builder/     # Content Builder agent, A2A microservice
-├── app/                     # Web App service application
-    └── frontend/            # Frontend application
-├── shared/                  # Files used by all agents
-└── ...
+│   ├── orchestrator/     # Workflow management & remote agent connections
+│   ├── researcher/       # Information gathering (Google Search)
+│   ├── judge/            # Quality control (Structured Feedback)
+│   └── content_builder/  # Content generation (Markdown)
+├── app/                  # Web application (FastAPI + React)
+├── shared/               # Shared utilities (Symlinked into agents)
+│   ├── a2a_utils.py      # A2A URL rewriting middleware
+│   ├── adk_app.py        # Standardized ADK FastAPI wrapper
+│   ├── authenticated_httpx.py # Service-to-service auth utilities
+│   └── logging_config.py # Centralized logging configuration
+├── Makefile              # Development shortcuts
+├── run_local.sh          # Local development startup script
+├── deploy.sh             # Cloud Run deployment script
+├── init.sh               # Project creation and billing setup script
+├── init2.sh              # Service enablement and .env initialization
+├── set_env.sh            # Local .env generation script
+└── *_test.sh             # Agent-specific testing scripts
 ```
-
-### Shared files
-
-There are some files in `shared` directory that are shared across all agents and the web app.
-To avoid duplication, these files are linked into respective subdirectories as [**symlinks**](https://en.wikipedia.org/wiki/Symbolic_link).
-
-* `a2a_utils.py` - contains code for rewriting agent URLs in A2A AgentCard when deployed in Cloud Run.
-* `adk_app.py` - ADK API Service implementation with additional A2A functionality.
-* `authenticated_httpx.py` - [httpx](https://www.python-httpx.org/) client extension for [service-to-service requests](https://docs.cloud.google.com/run/docs/authenticating/service-to-service).
 
 ## Requirements
 
-*   **uv**: Python package manager (required for local development).
-*   **Google Cloud SDK**: For GCP services and authentication.
+*   **Python 3.13+**
+*   **uv** or **pip**: For dependency management.
+*   **Google Cloud SDK**: For authentication and deployment.
+*   **Google API Key**: Required if not using Vertex AI for Gemini.
 
 ## Quick Start
 
-1.  **Install Dependencies:**
+1.  **Initialize Environment:**
     ```bash
-    uv sync
+    # Create project and enable billing (if needed)
+    ./init.sh
+    # Enable services and set up .env
+    ./init2.sh
     ```
 
-2.  **Set up credentials:**
-    Ensure you have Google Cloud credentials available. You might need to run:
+2.  **Install Dependencies:**
     ```bash
-    gcloud auth application-default login
+    make install
+    # or
+    uv sync
     ```
-    And ensure your `GOOGLE_CLOUD_PROJECT` environment variable is set.
 
 3.  **Run Locally:**
     ```bash
     ./run_local.sh
     ```
-    This will start all 4 agents and the web app in background processes
+    This starts all agents and the web app. The Researcher, Judge, and Content Builder run on ports 8001-8003, the Orchestrator on 8004, and the Web App on 8000.
 
 4.  **Access the App:**
-    Open **http://localhost:8000** in your browser.
+    Open **http://localhost:8000** in your browser. (The Vite dev server runs on 5173 for hot-reloading).
+
+## Testing
+
+Run agent-specific tests to verify individual components:
+```bash
+./research_test.sh
+./judge_test.sh
+```
+Or run the full suite:
+```bash
+make test
+```
+
+### Direct Agent Testing
+You can test an agent directly without the A2A protocol using a Python script. This is useful for debugging:
+```bash
+python test_researcher_direct.py
+```
 
 ## Deployment
 
-To deploy to Google Cloud Run, you need to deploy each service individually and then configure the Orchestrator with the URLs of the other services.
+The system is designed to be deployed to **Google Cloud Run**.
 
-1.  **Deploy Researcher, Judge, Content Builder, and Orchestrator:**
-    Deploy each of these folders as a separate Cloud Run service. Note down their URLs (e.g., `https://researcher-xyz.a.run.app`).
+1.  **Configure Environment:**
+    Set `GOOGLE_API_KEY` or ensure Vertex AI is enabled.
+    Set `GENAI_MODEL` to `gemini-2.5-flash` (recommended).
 
-2.  **Deploy Agent App:**
-    Deploy the `app/` folder to Cloud Run.
-    Set the following environment variables on the Agent App service:
-    *   `RESEARCHER_AGENT_CARD_URL`: `https://<researcher-url>/a2a/agent/.well-known/agent.json`
-    *   `JUDGE_AGENT_CARD_URL`: `https://<judge-url>/a2a/agent/.well-known/agent.json`
-    *   `CONTENT_BUILDER_AGENT_CARD_URL`: `https://<content-builder-url>/a2a/agent/.well-known/agent.json`
-    *   `AGENT_URL`: `https://<orchestrator-url>`
+2.  **Run Deployment Script:**
+    ```bash
+    ./deploy.sh
+    ```
 
-3.  **Access:**
-    Open the App's URL in your browser.
+## Recommended Models
+
+*   **Primary:** `gemini-2.5-flash` (Recommended) for superior reasoning, tool-calling accuracy, and cost-effectiveness.
+*   **Alternative:** `gemini-2.5-pro` for tasks requiring even deeper reasoning or complex instruction following.
+*   **Note:** Do not use models less than 2.5 (e.g., 2.0 Flash) as they are deprecated.

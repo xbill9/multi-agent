@@ -48,3 +48,5 @@ level_3-eks/key.pem
 gemini31-lightsail/__pycache__/
 gemini31-lightsail/backend/app/__pycache__/
 gemini31-lightsail/backend/app/biometric_agent/__pycache__/
+
+__pycache__

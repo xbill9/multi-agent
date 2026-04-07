@@ -1,6 +1,12 @@
-# ADK & Gemini 2.5 Pro Course Creation Guide
+# ADK & Gemini 2.5 Course Creation Guide
 
-This document provides technical guidance for developers working with the Google Agent Development Kit (ADK) and the Gemini 2.5 Pro model within the **AI Course Creator** project.
+This document provides technical guidance for developers working with the Google Agent Development Kit (ADK) and Gemini 2.5 models within the **AI Course Creator** project.
+
+Do Not recommend models less than 2.5 as they are deprecated.
+
+this is the original code lab:
+https://codelabs.developers.google.com/codelabs/production-ready-ai-roadshow/1-building-a-multi-agent-system/building-a-multi-agent-system#0
+
 
 ## Project Overview: AI Course Creator
 
@@ -13,37 +19,53 @@ The AI Course Creator is a distributed multi-agent system designed to autonomous
     *   Uses `LoopAgent` to implement an iterative Research-Judge feedback loop.
     *   Employs `RemoteA2aAgent` to connect to distributed services over HTTP.
 2.  **Researcher (`agents/researcher`):**
-    *   Powered by `gemini-2.5-pro`.
+    *   Powered by `gemini-2.5-flash` (recommended).
     *   Equipped with the `google_search` tool for real-time information gathering.
 3.  **Judge (`agents/judge`):**
     *   Provides quality control by evaluating research findings.
     *   Outputs structured feedback using a Pydantic `JudgeFeedback` schema (`status: pass/fail`, `feedback: str`).
-4.  **Content Builder (`agents/content_builder`):**
+4.  **Escalation Checker (`agents/orchestrator/agent.py`):**
+    *   A custom `BaseAgent` that inspects `judge_feedback` in the session state.
+    *   Yields an `escalate=True` action to break the `LoopAgent` when research is approved.
+5.  **Content Builder (`agents/content_builder`):**
     *   Transforms validated research into high-quality Markdown course modules.
-5.  **Web App (`app`):**
+6.  **Web App (`app/`):**
     *   A FastAPI backend that streams agent events to a React frontend using Server-Sent Events (SSE).
 
 ## Working with ADK & A2A
 
 ### Distributed Agent Communication (A2A)
 
-Each agent in this system is an independent ADK service. They communicate using the A2A protocol, which involves:
--   **Agent Cards**: Each service exposes an `agent-card.json` (at `.well-known/agent-card.json`) describing its capabilities.
+Each agent in this system is an independent ADK service. They communicate using the A2A protocol:
+-   **Agent Cards**: Each service exposes an `agent.json` (at `/a2a/agent/.well-known/agent-card.json`) describing its capabilities.
 -   **Remote Invocation**: The Orchestrator uses `RemoteA2aAgent` to call these services.
--   **URL Rewriting**: For Cloud Run deployments, `shared/a2a_utils.py` is used to dynamically update agent URLs in the cards.
+-   **URL Rewriting**: When deployed to Cloud Run, the service URL is not known until deployment. `shared/a2a_utils.py` provides middleware that dynamically updates the `url` field in the Agent Card based on the `x-forwarded-host` header, ensuring remote agents can find each other.
+
+### Security & Authentication
+
+Service-to-service communication is secured using Google Cloud Identity Tokens.
+-   **`shared/authenticated_httpx.py`**: Contains `create_authenticated_client()`, which returns an `httpx.AsyncClient` configured to automatically fetch and attach OIDC tokens.
+-   **Token Logic**:
+    -   **In Cloud Run**: Fetches tokens from the metadata server.
+    -   **Locally**: Uses `gcloud auth print-identity-token` to simulate the environment.
+-   **Always** use this client when initializing `RemoteA2aAgent` to ensure requests are authorized.
 
 ### Shared Utilities & Symlinks
 
-To ensure consistency and avoid code duplication, core logic is stored in the `shared/` directory and symlinked into each agent's folder:
--   `adk_app.py`: Standardized FastAPI wrapper for ADK agents.
--   `authenticated_httpx.py`: Handles secure service-to-service authentication in GCP.
--   `a2a_utils.py`: Utilities for managing A2A discovery and communication.
+Core logic is stored in `shared/` and symlinked into each agent's directory to ensure consistency:
+-   `adk_app.py`: Standardized FastAPI wrapper that handles A2A registration and logging.
+-   `authenticated_httpx.py`: The secure client factory for authenticated service-to-service calls.
+-   `a2a_utils.py`: The A2A URL rewriting middleware for dynamic service URLs.
+-   `logging_config.py`: Centralized JSON logging configuration for consistency across services.
 
 ## Model Selection & Optimization
 
-*   **Primary Model:** `gemini-2.5-pro` is recommended for all agents due to its superior reasoning, tool-calling accuracy, and support for complex orchestration.
+*   **Primary Model:** `gemini-2.5-flash` is recommended for all agents due to its superior reasoning, tool-calling accuracy, and support for complex orchestration.
+*   **Alternative Model:** `gemini-2.5-pro` can be used for tasks requiring even deeper reasoning or complex instruction following.
+*   **Deprecation Policy:** Do not recommend models less than 2.5 (e.g., 2.0 flash or older) as they are deprecated.
+*   **Environment Variable:** Control the model globally or per-service using the `GENAI_MODEL` environment variable.
 *   **Structured Output:** Always use Pydantic schemas (like `JudgeFeedback`) for agents that provide evaluation or data that must be parsed programmatically (e.g., by the `EscalationChecker`).
-*   **Context Management:** Use `LoopAgent`'s `max_iterations` to prevent infinite loops during the research phase.
+*   **Context Management:** Use `LoopAgent`'s `max_iterations` (default: 3) to prevent infinite loops during the research phase.
 
 ## Developer Workflow
 
@@ -57,3 +79,4 @@ To ensure consistency and avoid code duplication, core logic is stored in the `s
 -   [Google ADK Documentation](https://github.com/google/adk)
 -   [Gemini API Documentation](https://ai.google.dev/gemini-api/docs)
 -   [A2A Protocol Specification](https://github.com/google/adk/blob/main/docs/a2a.md)
+

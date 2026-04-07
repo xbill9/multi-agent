@@ -33,49 +33,96 @@ fi
 echo "Using project ${GOOGLE_CLOUD_PROJECT}."
 echo "Using compute region ${REGION}."
 
-gcloud run deploy researcher \
-  --source agents/researcher \
-  --project $GOOGLE_CLOUD_PROJECT \
-  --region $REGION \
-  --no-allow-unauthenticated \
-  --set-env-vars GOOGLE_CLOUD_PROJECT="${GOOGLE_CLOUD_PROJECT}" \
-  --set-env-vars GOOGLE_GENAI_USE_VERTEXAI="true"
-RESEARCHER_URL=$(gcloud run services describe researcher --region $REGION --format='value(status.url)')
+deploy_researcher() {
+  echo "Deploying researcher..."
+  gcloud run deploy researcher \
+    --source agents/researcher \
+    --project $GOOGLE_CLOUD_PROJECT \
+    --region $REGION \
+    --no-allow-unauthenticated \
+    --set-env-vars GOOGLE_CLOUD_PROJECT="${GOOGLE_CLOUD_PROJECT}" \
+    --set-env-vars GOOGLE_GENAI_USE_VERTEXAI="false" \
+    --set-env-vars GOOGLE_API_KEY="${GOOGLE_API_KEY}" \
+    --set-env-vars GENAI_MODEL="${GENAI_MODEL}"
+}
 
-gcloud run deploy content-builder \
-  --source agents/content_builder \
-  --project $GOOGLE_CLOUD_PROJECT \
-  --region $REGION \
-  --no-allow-unauthenticated \
-  --set-env-vars GOOGLE_CLOUD_PROJECT="${GOOGLE_CLOUD_PROJECT}" \
-  --set-env-vars GOOGLE_GENAI_USE_VERTEXAI="true"
-CONTENT_BUILDER_URL=$(gcloud run services describe content-builder --region $REGION --format='value(status.url)')
+deploy_content_builder() {
+  echo "Deploying content-builder..."
+  gcloud run deploy content-builder \
+    --source agents/content_builder \
+    --project $GOOGLE_CLOUD_PROJECT \
+    --region $REGION \
+    --no-allow-unauthenticated \
+    --set-env-vars GOOGLE_CLOUD_PROJECT="${GOOGLE_CLOUD_PROJECT}" \
+    --set-env-vars GOOGLE_GENAI_USE_VERTEXAI="false" \
+    --set-env-vars GOOGLE_API_KEY="${GOOGLE_API_KEY}" \
+    --set-env-vars GENAI_MODEL="${GENAI_MODEL}"
+}
 
-gcloud run deploy judge \
-  --source agents/judge \
-  --project $GOOGLE_CLOUD_PROJECT \
-  --region $REGION \
-  --no-allow-unauthenticated \
-  --set-env-vars GOOGLE_CLOUD_PROJECT="${GOOGLE_CLOUD_PROJECT}" \
-  --set-env-vars GOOGLE_GENAI_USE_VERTEXAI="true"
-JUDGE_URL=$(gcloud run services describe judge --region $REGION --format='value(status.url)')
+deploy_judge() {
+  echo "Deploying judge..."
+  gcloud run deploy judge \
+    --source agents/judge \
+    --project $GOOGLE_CLOUD_PROJECT \
+    --region $REGION \
+    --no-allow-unauthenticated \
+    --set-env-vars GOOGLE_CLOUD_PROJECT="${GOOGLE_CLOUD_PROJECT}" \
+    --set-env-vars GOOGLE_GENAI_USE_VERTEXAI="false" \
+    --set-env-vars GOOGLE_API_KEY="${GOOGLE_API_KEY}" \
+    --set-env-vars GENAI_MODEL="${GENAI_MODEL}"
+}
 
-gcloud run deploy orchestrator \
-  --source agents/orchestrator \
-  --project $GOOGLE_CLOUD_PROJECT \
-  --region $REGION \
-  --no-allow-unauthenticated \
-  --set-env-vars RESEARCHER_AGENT_CARD_URL=$RESEARCHER_URL/a2a/agent/.well-known/agent-card.json \
-  --set-env-vars JUDGE_AGENT_CARD_URL=$JUDGE_URL/a2a/agent/.well-known/agent-card.json \
-  --set-env-vars CONTENT_BUILDER_AGENT_CARD_URL=$CONTENT_BUILDER_URL/a2a/agent/.well-known/agent-card.json \
-  --set-env-vars GOOGLE_CLOUD_PROJECT="${GOOGLE_CLOUD_PROJECT}" \
-  --set-env-vars GOOGLE_GENAI_USE_VERTEXAI="true"
-ORCHESTRATOR_URL=$(gcloud run services describe orchestrator --region $REGION --format='value(status.url)')
+deploy_orchestrator() {
+  echo "Deploying orchestrator..."
+  RESEARCHER_URL=$(gcloud run services describe researcher --region $REGION --format='value(status.url)' --project $GOOGLE_CLOUD_PROJECT)
+  CONTENT_BUILDER_URL=$(gcloud run services describe content-builder --region $REGION --format='value(status.url)' --project $GOOGLE_CLOUD_PROJECT)
+  JUDGE_URL=$(gcloud run services describe judge --region $REGION --format='value(status.url)' --project $GOOGLE_CLOUD_PROJECT)
 
-gcloud run deploy course-creator \
-  --source app \
-  --project $GOOGLE_CLOUD_PROJECT \
-  --region $REGION \
-  --allow-unauthenticated \
-  --set-env-vars AGENT_SERVER_URL=$ORCHESTRATOR_URL \
-  --set-env-vars GOOGLE_CLOUD_PROJECT="${GOOGLE_CLOUD_PROJECT}"
+  gcloud run deploy orchestrator \
+    --source agents/orchestrator \
+    --project $GOOGLE_CLOUD_PROJECT \
+    --region $REGION \
+    --no-allow-unauthenticated \
+    --set-env-vars RESEARCHER_AGENT_CARD_URL=$RESEARCHER_URL/a2a/agent/.well-known/agent-card.json \
+    --set-env-vars JUDGE_AGENT_CARD_URL=$JUDGE_URL/a2a/agent/.well-known/agent-card.json \
+    --set-env-vars CONTENT_BUILDER_AGENT_CARD_URL=$CONTENT_BUILDER_URL/a2a/agent/.well-known/agent-card.json \
+    --set-env-vars GOOGLE_CLOUD_PROJECT="${GOOGLE_CLOUD_PROJECT}" \
+    --set-env-vars GOOGLE_GENAI_USE_VERTEXAI="false" \
+    --set-env-vars GOOGLE_API_KEY="${GOOGLE_API_KEY}" \
+    --set-env-vars GENAI_MODEL="${GENAI_MODEL}"
+}
+
+deploy_course_creator() {
+  echo "Deploying course-creator..."
+  ORCHESTRATOR_URL=$(gcloud run services describe orchestrator --region $REGION --format='value(status.url)' --project $GOOGLE_CLOUD_PROJECT)
+  gcloud run deploy course-creator \
+    --source app \
+    --project $GOOGLE_CLOUD_PROJECT \
+    --region $REGION \
+    --allow-unauthenticated \
+    --set-env-vars AGENT_SERVER_URL=$ORCHESTRATOR_URL \
+    --set-env-vars GOOGLE_CLOUD_PROJECT="${GOOGLE_CLOUD_PROJECT}"
+}
+
+SERVICE=$1
+
+if [[ "${SERVICE}" == "researcher" ]]; then
+  deploy_researcher
+elif [[ "${SERVICE}" == "content-builder" ]]; then
+  deploy_content_builder
+elif [[ "${SERVICE}" == "judge" ]]; then
+  deploy_judge
+elif [[ "${SERVICE}" == "orchestrator" ]]; then
+  deploy_orchestrator
+elif [[ "${SERVICE}" == "course-creator" ]]; then
+  deploy_course_creator
+elif [[ "${SERVICE}" == "" ]]; then
+  deploy_researcher
+  deploy_content_builder
+  deploy_judge
+  deploy_orchestrator
+  deploy_course_creator
+else
+  echo "ERROR: Unknown service '${SERVICE}'"
+  exit 1
+fi

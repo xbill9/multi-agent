@@ -84,7 +84,7 @@ echo -e "\n--- Installing Python dependencies ---"
 pip install --upgrade --user google-cloud-billing || handle_error "Failed to install Python libraries."
 
 echo -e "\n--- Running the Billing Enablement Script ---"
-python3 billing-enablement.py || handle_error "The billing enablement script failed. See the output above for details."
+#python3 billing-enablement.py || handle_error "The billing enablement script failed. See the output above for details."
 
 echo -e "\n--- Full Setup Complete ---"
 exit 0
