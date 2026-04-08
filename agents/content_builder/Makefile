@@ -17,12 +17,13 @@ export PROJECT_ROOT
 TOPIC ?= Please generate a course module based on these findings.
 RESEARCH_FINDINGS ?= The Gemini 2.5 models are the latest from Google. They offer improved reasoning and speed. Key features include large context windows and native multimodal capabilities.
 
-.PHONY: help install run lint test clean deploy a2a endpoint test-invoke
+.PHONY: help install run lint test clean deploy a2a endpoint test-invoke status
 
 help:
 	@echo "Available targets:"
 	@echo "  install  - Install dependencies"
 	@echo "  run      - Run the agent locally on port $(PORT)"
+	@echo "  status   - Check local and remote service status"
 	@echo "  lint     - Run linting (ruff)"
 	@echo "  test     - Run tests (pytest)"
 	@echo "  clean    - Remove temporary files and cache"
@@ -30,6 +31,20 @@ help:
 	@echo "  endpoint - Get the Cloud Run service URL"
 	@echo "  a2a      - Fetch the A2A agent card (uses SERVICE_URL if set/found, else localhost)"
 	@echo "  test-invoke - Call the agent endpoint with a research TOPIC and RESEARCH_FINDINGS"
+
+status:
+	@echo "--- Local Status (Port $(PORT)) ---"
+	@if lsof -Pi :$(PORT) -sTCP:LISTEN -t >/dev/null; then \
+		echo "Agent is RUNNING on port $(PORT)"; \
+	else \
+		echo "Agent is NOT RUNNING locally"; \
+	fi
+	@echo "--- Cloud Run Status ($(SERVICE_NAME)) ---"
+	@if [ -n "$(SERVICE_URL)" ]; then \
+		echo "Service is DEPLOYED at $(SERVICE_URL)"; \
+	else \
+		echo "Service is NOT DEPLOYED to Cloud Run"; \
+	fi
 
 install:
 	$(PIP) install -e .

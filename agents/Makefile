@@ -2,13 +2,14 @@
 
 SUBDIRS = researcher judge content_builder orchestrator
 
-.PHONY: help install lint test clean deploy format run endpoint a2a
+.PHONY: help install lint test clean deploy format run endpoint a2a status
 
 help:
 	@echo "Available targets:"
 	@echo "  install  - Install dependencies for all agents"
 	@echo "  lint     - Run linting for all agents"
 	@echo "  test     - Run tests for all agents"
+	@echo "  status   - Check the status of all agents (local and remote)"
 	@echo "  clean    - Clean temporary files for all agents"
 	@echo "  deploy   - Deploy all agents to Cloud Run (if supported)"
 	@echo "  format   - Run formatting for all agents (if supported)"
@@ -16,7 +17,7 @@ help:
 	@echo "  endpoint - Get the deployed service URLs for all agents"
 	@echo "  a2a      - Fetch the A2A Agent Cards for all agents"
 
-install lint test clean:
+install lint test clean status:
 	@for dir in $(SUBDIRS); do \
 		echo "--- $$dir: $@ ---"; \
 		$(MAKE) -C $$dir $@; \

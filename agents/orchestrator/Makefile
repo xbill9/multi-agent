@@ -2,11 +2,40 @@
 REGION ?= us-central1
 GOOGLE_CLOUD_PROJECT ?= $(shell gcloud config get-value project)
 GENAI_MODEL ?= gemini-2.5-flash
+PORT ?= 8080
+SERVICE_URL ?= $(shell gcloud run services describe orchestrator --region $(REGION) --format='value(status.url)' --project $(GOOGLE_CLOUD_PROJECT) 2>/dev/null)
 
-.PHONY: all install run deploy a2a endpoint test lint format clean
+.PHONY: all install run deploy a2a endpoint test lint format clean status
 
 # Default target
 all: run
+
+help:
+	@echo "Available targets:"
+	@echo "  install  - Install dependencies"
+	@echo "  run      - Run the orchestrator locally"
+	@echo "  status   - Check local and remote service status"
+	@echo "  deploy   - Deploy to Cloud Run"
+	@echo "  endpoint - Get the deployed service URL"
+	@echo "  a2a      - Fetch the A2A Agent Card"
+	@echo "  test     - Run tests"
+	@echo "  lint     - Run linting"
+	@echo "  format   - Run formatting"
+	@echo "  clean    - Clean temporary files"
+
+status:
+	@echo "--- Local Status (Port $(PORT)) ---"
+	@if lsof -Pi :$(PORT) -sTCP:LISTEN -t >/dev/null; then \
+		echo "Agent is RUNNING on port $(PORT)"; \
+	else \
+		echo "Agent is NOT RUNNING locally"; \
+	fi
+	@echo "--- Cloud Run Status (orchestrator) ---"
+	@if [ -n "$(SERVICE_URL)" ]; then \
+		echo "Service is DEPLOYED at $(SERVICE_URL)"; \
+	else \
+		echo "Service is NOT DEPLOYED to Cloud Run"; \
+	fi
 
 # Install dependencies
 install:

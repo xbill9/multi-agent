@@ -6,7 +6,7 @@ REGION       ?= us-central1
 SERVICE_NAME ?= course-creator
 ORCHESTRATOR_URL = $(shell gcloud run services describe orchestrator --region $(REGION) --format='value(status.url)' --project $(PROJECT_ID) 2>/dev/null)
 
-.PHONY: install build-frontend run lint test clean help deploy
+.PHONY: install build-frontend run lint test clean help deploy endpoint status
 
 help:
 	@echo "Available commands:"
@@ -17,6 +17,8 @@ help:
 	@echo "  test             - Run all project tests from the root directory"
 	@echo "  clean            - Remove temporary files, caches, and build artifacts"
 	@echo "  deploy           - Deploy the web app to Cloud Run"
+	@echo "  endpoint         - Show the URL of the deployed Cloud Run service"
+	@echo "  status           - Show the status of the deployed Cloud Run service"
 
 install:
 	pip install -r requirements.txt
@@ -42,6 +44,12 @@ deploy:
 		--region $(REGION) \
 		--allow-unauthenticated \
 		--set-env-vars AGENT_SERVER_URL=$(ORCHESTRATOR_URL)
+
+endpoint:
+	@gcloud run services describe $(SERVICE_NAME) --region $(REGION) --format='value(status.url)' --project $(PROJECT_ID)
+
+status:
+	@gcloud run services describe $(SERVICE_NAME) --region $(REGION) --project $(PROJECT_ID)
 
 clean:
 	@echo "Cleaning up caches and temporary files..."

@@ -8,12 +8,13 @@ PORT = 8002
 PROJECT_ROOT := $(shell git rev-parse --show-toplevel 2>/dev/null || pwd)
 export PROJECT_ROOT
 
-.PHONY: help install run lint test clean deploy endpoint a2a test-invoke logs
+.PHONY: help install run lint test clean deploy endpoint a2a test-invoke logs status
 
 help:
 	@echo "Available targets:"
 	@echo "  install  - Install dependencies"
 	@echo "  run      - Run the agent locally on port $(PORT)"
+	@echo "  status   - Check local and remote service status"
 	@echo "  lint     - Run linting (ruff)"
 	@echo "  test     - Run tests (pytest)"
 	@echo "  clean    - Remove temporary files and cache"
@@ -22,6 +23,20 @@ help:
 	@echo "  a2a      - Fetch the A2A Agent Card"
 	@echo "  test-invoke - Test agent invocation via A2A"
 	@echo "  logs     - Show Cloud Run logs"
+
+status:
+	@echo "--- Local Status (Port $(PORT)) ---"
+	@if lsof -Pi :$(PORT) -sTCP:LISTEN -t >/dev/null; then \
+		echo "Agent is RUNNING on port $(PORT)"; \
+	else \
+		echo "Agent is NOT RUNNING locally"; \
+	fi
+	@echo "--- Cloud Run Status ($(AGENT_NAME)) ---"
+	@if [ -n "$(SERVICE_URL)" ]; then \
+		echo "Service is DEPLOYED at $(SERVICE_URL)"; \
+	else \
+		echo "Service is NOT DEPLOYED to Cloud Run"; \
+	fi
 
 install:
 	$(PIP) install -e .

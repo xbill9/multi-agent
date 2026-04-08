@@ -1,6 +1,6 @@
 # Makefile for AI Course Creator (Multi-Agent System)
 
-.PHONY: install run frontend lint test deploy status endpoint clean help researcher content-builder judge orchestrator course-creator
+.PHONY: install run frontend lint test deploy status endpoint a2a clean help researcher content-builder judge orchestrator course-creator
 
 help:
 	@echo "Available commands:"
@@ -17,6 +17,7 @@ help:
 	@echo "  course-creator   - Deploy App Server remotely"
 	@echo "  status           - Check the deployment status on Google Cloud Run"
 	@echo "  endpoint         - Show the URLs for all deployed services"
+	@echo "  a2a              - Show the A2A endpoints for all deployed agents (constructed from agents/)"
 	@echo "  e2e-test         - Run a full end-to-end test against the backend (Default: localhost:8000)"
 	@echo "  e2e-test-cloud   - Run a full end-to-end test against the Cloud Run deployment"
 	@echo "  clean            - Remove temporary files and caches"
@@ -79,6 +80,13 @@ status:
 endpoint:
 	@echo "Service URLs:"
 	@gcloud run services list --filter="metadata.name:(researcher,content-builder,judge,orchestrator,course-creator)" --format="table(name,status.url)"
+
+a2a:
+	@echo "A2A Endpoints (from agents/):"
+	@AGENTS=$$(find agents -maxdepth 2 \( -name "agent.json" -o -name "agent.py" \) | xargs -n1 dirname | xargs -n1 basename | sort -u | paste -sd, -); \
+	gcloud run services list --filter="metadata.name:($$AGENTS)" --format="value(status.url,metadata.name)" | while read url name; do \
+		echo "$$name: $$url/a2a/$$name"; \
+	done
 
 clean:
 	@echo "Cleaning up caches and temporary files..."
