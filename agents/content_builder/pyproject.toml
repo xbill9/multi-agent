@@ -4,7 +4,7 @@ version = "0.1.0"
 description = "Content Builder microservice agent"
 requires-python = ">=3.13"
 dependencies = [
-    "shared-utils @ file:///${PROJECT_ROOT}/shared",
+    "shared-utils",
     "google-adk",
     "a2a-sdk",
     "fastapi",
@@ -15,7 +15,7 @@ dependencies = [
 ]
 
 [tool.hatch.build.targets.wheel]
-packages = ["agent"]
+packages = ["."]
 
 [build-system]
 requires = ["hatchling"]

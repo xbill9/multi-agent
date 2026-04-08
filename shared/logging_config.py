@@ -16,7 +16,7 @@ import logging
 import os
 import sys
 
-from pythonjsonlogger import json
+from pythonjsonlogger.json import JsonFormatter
 
 
 def setup_logging(service_name: str | None = None, level: str | None = None):
@@ -35,7 +35,7 @@ def setup_logging(service_name: str | None = None, level: str | None = None):
     # Standard format for JSON logs
     format_str = '%(asctime)s %(name)s %(levelname)s %(message)s %(filename)s %(lineno)d'
 
-    formatter = json.JsonFormatter(
+    formatter = JsonFormatter(
         format_str,
         json_ensure_ascii=False
     )

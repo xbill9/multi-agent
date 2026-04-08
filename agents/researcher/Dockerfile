@@ -2,26 +2,17 @@ FROM python:3.13-slim
 
 WORKDIR /app
 
-# Set PROJECT_ROOT for pip to resolve local dependencies
-ENV PROJECT_ROOT=/app
+# Copy all source (root context)
+COPY . .
 
-# Copy shared utilities first
-COPY shared /app/shared
-
-# Copy the agent source code
-COPY agents/researcher /app/agents/researcher
-
-# Set working directory to the agent's folder
-WORKDIR /app/agents/researcher
-
-# Install the agent and its dependencies (including the local 'shared-utils')
-# Using -e or direct path to shared since PROJECT_ROOT won't exist in Docker
-RUN pip install --no-cache-dir /app/shared
-RUN pip install --no-cache-dir .
+# Install shared and agent
+RUN pip install --no-cache-dir ./shared
+RUN pip install --no-cache-dir ./agents/researcher
 
 # Environment variables
 ENV PYTHONUNBUFFERED=1
 ENV HOST 0.0.0.0
 
-# Run ADK API Server (now imported from the shared package)
-CMD ["python3", "-m", "shared.adk_app", "--host", "0.0.0.0", "--trace_to_cloud", "--a2a"]
+# Run ADK API Server
+# Looking for agents/researcher/agent.py (AgentLoader expects the directory)
+CMD ["python3", "-m", "shared.adk_app", "/app/agents", "--host", "0.0.0.0", "--trace_to_cloud", "--a2a"]

@@ -90,12 +90,27 @@ def main(
     files_to_cleanup = []
     folders_to_cleanup = []
 
+    # Determine if we are loading a single agent in the provided directory
+    agent_root_py = Path(agents_dir) / "agent.py"
+    agent_root_json = Path(agents_dir) / "agent.json"
+    
+    # We'll pass this info to _prepare_a2a_agent_cards and use it for get_fast_api_app
+    effective_agents_dir = agents_dir
+    effective_agents = None
+
+    if agent_root_py.exists() or agent_root_json.exists():
+        # Point AgentLoader to the parent and load this directory as the agent
+        parent_dir = str(Path(agents_dir).parent)
+        agent_name = os.path.basename(agents_dir)
+        effective_agents_dir = parent_dir
+        effective_agents = [agent_name]
+
     try:
         if a2a:
-            _prepare_a2a_agent_cards(agents_dir, files_to_cleanup, folders_to_cleanup)
+            _prepare_a2a_agent_cards(agents_dir, files_to_cleanup, folders_to_cleanup, effective_agents)
 
         app = fast_api.get_fast_api_app(
-            agents_dir=agents_dir,
+            agents_dir=effective_agents_dir,
             session_service_uri=session_service_uri,
             artifact_service_uri=artifact_service_uri,
             memory_service_uri=memory_service_uri,
@@ -140,7 +155,7 @@ def main(
 
 
 def _prepare_a2a_agent_cards(
-    agents_dir: str, files_to_cleanup: list, folders_to_cleanup: list
+    agents_dir: str, files_to_cleanup: list, folders_to_cleanup: list, effective_agents: list[str] | None = None
 ):
     """Generates temporary agent.json cards for A2A discovery if they don't exist."""
     from a2a.types import AgentCapabilities
@@ -148,8 +163,14 @@ def _prepare_a2a_agent_cards(
     from google.adk.apps import App
     from google.adk.cli.utils.agent_loader import AgentLoader
 
-    loader = AgentLoader(agents_dir)
-    agents = loader.list_agents() or ["agent"]
+    if effective_agents:
+        agents = effective_agents
+        # If we have effective agents, it means we are loading them from the parent
+        loader = AgentLoader(str(Path(agents_dir).parent))
+        agents_dir = str(Path(agents_dir).parent)
+    else:
+        loader = AgentLoader(agents_dir)
+        agents = loader.list_agents() or ["agent"]
 
     for agent_name in agents:
         agent_path = Path(agents_dir) / agent_name

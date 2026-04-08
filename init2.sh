@@ -35,13 +35,9 @@ cat <<EOF > .env
 GOOGLE_GENAI_USE_VERTEXAI=false
 GOOGLE_CLOUD_PROJECT=$PROJECT_ID
 GOOGLE_CLOUD_LOCATION=us-central1
-IMAGEN_MODEL="imagen-4.0-fast-generate-001"
 GENAI_MODEL="gemini-2.5-flash"
 GOOGLE_API_KEY=$GOOGLE_API_KEY
 GEMINI_API_KEY=$GOOGLE_API_KEY
-GEMINI_KEY=$GOOGLE_API_KEY
-MODEL_ID="gemini-3.1-flash-live-preview"
-SERVICE_NAME=biometric-scout
 EOF
 
 source .env
@@ -55,8 +51,14 @@ if [ -z "$CLOUD_SHELL" ]; then
     fi
 fi
 
+# Use the Google Cloud SDK bundled Python 3.13
+PYTHON_CMD=/usr/lib/google-cloud-sdk/platform/bundledpythonunix/bin/python3
+if [ ! -f "$PYTHON_CMD" ]; then
+  PYTHON_CMD=python3
+fi
+
 if [ ! -f ".requirements_installed" ]; then
-    pip install -r requirements.txt
+    $PYTHON_CMD -m pip install -r requirements.txt
     touch .requirements_installed
 fi
 
@@ -67,5 +69,5 @@ echo "Cloud Login"
 gcloud auth list
 
 echo "ADK update"
-pip install google-adk --upgrade
-adk --version
+$PYTHON_CMD -m pip install google-adk --upgrade
+$PYTHON_CMD -m google.adk.cli --version

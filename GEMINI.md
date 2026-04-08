@@ -7,6 +7,7 @@ Do Not recommend models less than 2.5 as they are deprecated.
 this is the original code lab:
 https://codelabs.developers.google.com/codelabs/production-ready-ai-roadshow/1-building-a-multi-agent-system/building-a-multi-agent-system#0
 
+Do not try to setup python venv locally.
 
 ## Project Overview: AI Course Creator
 
@@ -16,7 +17,7 @@ The AI Course Creator is a distributed multi-agent system designed to autonomous
 
 1.  **Orchestrator (`agents/orchestrator`):**
     *   Uses `SequentialAgent` to define a high-level pipeline.
-    *   Uses `LoopAgent` to implement an iterative Research-Judge feedback loop.
+    *   Uses `LoopAgent` with `max_iterations=2` to implement an iterative Research-Judge feedback loop.
     *   Employs `RemoteA2aAgent` to connect to distributed services over HTTP.
 2.  **Researcher (`agents/researcher`):**
     *   Powered by `gemini-2.5-flash` (recommended).
@@ -27,10 +28,13 @@ The AI Course Creator is a distributed multi-agent system designed to autonomous
 4.  **Escalation Checker (`agents/orchestrator/agent.py`):**
     *   A custom `BaseAgent` that inspects `judge_feedback` in the session state.
     *   Yields an `escalate=True` action to break the `LoopAgent` when research is approved.
-5.  **Content Builder (`agents/content_builder`):**
+5.  **State Capturer & Progress Agent:**
+    *   **`StateCapturer`**: Orchestration-level helper that extracts agent outputs (like JSON feedback) from the session history and persists them into the `session.state` for other agents to consume.
+    *   **`ProgressAgent`**: A lightweight agent that yields informational status messages (e.g., "🔍 Research is starting...") to the frontend via SSE.
+6.  **Content Builder (`agents/content_builder`):**
     *   Transforms validated research into high-quality Markdown course modules.
-6.  **Web App (`app/`):**
-    *   A FastAPI backend that streams agent events to a React frontend using Server-Sent Events (SSE).
+7.  **Web App (`app/`):**
+    *   A FastAPI backend that streams agent events to a Vanilla TypeScript + Vite frontend using Server-Sent Events (SSE).
 
 ## Working with ADK & A2A
 
@@ -50,10 +54,10 @@ Service-to-service communication is secured using Google Cloud Identity Tokens.
     -   **Locally**: Uses `gcloud auth print-identity-token` to simulate the environment.
 -   **Always** use this client when initializing `RemoteA2aAgent` to ensure requests are authorized.
 
-### Shared Utilities & Symlinks
+### Shared Utilities & Docker Integration
 
 Core logic is stored in `shared/` and symlinked into each agent's directory to ensure consistency:
--   `adk_app.py`: Standardized FastAPI wrapper that handles A2A registration and logging.
+-   **`adk_app.py`**: A standardized FastAPI entry point used by all agent Dockerfiles. It handles agent loading, A2A registration, logging setup, and includes the A2A URL rewriting middleware.
 -   `authenticated_httpx.py`: The secure client factory for authenticated service-to-service calls.
 -   `a2a_utils.py`: The A2A URL rewriting middleware for dynamic service URLs.
 -   `logging_config.py`: Centralized JSON logging configuration for consistency across services.
@@ -65,7 +69,7 @@ Core logic is stored in `shared/` and symlinked into each agent's directory to e
 *   **Deprecation Policy:** Do not recommend models less than 2.5 (e.g., 2.0 flash or older) as they are deprecated.
 *   **Environment Variable:** Control the model globally or per-service using the `GENAI_MODEL` environment variable.
 *   **Structured Output:** Always use Pydantic schemas (like `JudgeFeedback`) for agents that provide evaluation or data that must be parsed programmatically (e.g., by the `EscalationChecker`).
-*   **Context Management:** Use `LoopAgent`'s `max_iterations` (default: 3) to prevent infinite loops during the research phase.
+*   **Context Management:** Use `LoopAgent`'s `max_iterations` (set to `2` in the orchestrator) to prevent infinite loops during the research phase.
 
 ## Developer Workflow
 

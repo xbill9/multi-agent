@@ -56,3 +56,33 @@ async def test_escalation_checker_string_pass():
     assert len(events) == 1
     assert events[0].actions.escalate is True
     assert "Research approved" in events[0].content.parts[0].text
+
+
+@pytest.mark.asyncio
+async def test_escalation_checker_pass_uppercase():
+    """Test that EscalationChecker handles uppercase 'PASS'."""
+    ctx = MagicMock(spec=InvocationContext)
+    ctx.session = MagicMock()
+    ctx.session.state = {"judge_feedback": {"status": "PASS"}}
+
+    events = []
+    async for event in escalation_checker._run_async_impl(ctx):
+        events.append(event)
+
+    assert len(events) == 1
+    assert events[0].actions.escalate is True
+
+
+@pytest.mark.asyncio
+async def test_escalation_checker_string_plain_pass():
+    """Test that EscalationChecker handles plain string feedback containing 'status: pass'."""
+    ctx = MagicMock(spec=InvocationContext)
+    ctx.session = MagicMock()
+    ctx.session.state = {"judge_feedback": "Research is complete. Status: pass"}
+
+    events = []
+    async for event in escalation_checker._run_async_impl(ctx):
+        events.append(event)
+
+    assert len(events) == 1
+    assert events[0].actions.escalate is True

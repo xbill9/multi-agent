@@ -1,0 +1,10 @@
+.git
+.gitignore
+**/__pycache__
+**/.pytest_cache
+**/.ruff_cache
+**/.venv
+**/node_modules
+**/dist
+# Except for app/dist which is needed for course-creator
+!app/dist

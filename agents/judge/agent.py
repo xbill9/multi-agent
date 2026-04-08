@@ -1,5 +1,6 @@
 import logging
 import os
+from typing import Literal
 
 from google.adk.agents import Agent
 from google.adk.agents.callback_context import CallbackContext
@@ -15,7 +16,7 @@ MODEL = os.getenv("GENAI_MODEL", "gemini-2.5-flash")
 
 class JudgeFeedback(BaseModel):
     """Feedback from the judge on the research quality."""
-    status: str = Field(description="The status of the research: 'pass' or 'fail'.")
+    status: Literal["pass", "fail"] = Field(description="The status of the research: 'pass' or 'fail'.")
     feedback: str = Field(description="Detailed feedback on the research findings.")
 
 async def log_before_judge(callback_context: CallbackContext) -> None:
@@ -24,15 +25,18 @@ async def log_before_judge(callback_context: CallbackContext) -> None:
 
 async def log_after_judge(callback_context: CallbackContext) -> None:
     """Log the result of the judge's evaluation."""
-    # The structured output is stored in ctx.session.state by the Agent
-    # if output_key is not specified, it's not automatically stored in state by default Agent behavior,
-    # but the final response contains it.
-    # However, for logging purposes, we can see if it was placed in state if we had an output_key.
-    # Let's add an output_key to make it easier to log from the callback.
     evaluation = callback_context.session.state.get("judge_evaluation")
     if evaluation:
-        logger.info(f"Judge evaluation complete. Status: {evaluation.get('status')}")
-        logger.debug(f"Full feedback: {evaluation.get('feedback')}")
+        # Handle both dict and Pydantic object if needed
+        is_dict = isinstance(evaluation, dict)
+        status = evaluation.get("status") if is_dict else getattr(evaluation, "status", "unknown")
+        feedback = evaluation.get("feedback") if is_dict else getattr(evaluation, "feedback", "")
+
+        logger.info(f"Judge evaluation complete. Status: {status}")
+        if status == "fail":
+            logger.warning(f"Research failed validation. Feedback: {feedback}")
+        else:
+            logger.debug(f"Research passed validation. Feedback: {feedback}")
 
 # Define the Judge Agent
 judge = Agent(
@@ -40,11 +44,24 @@ judge = Agent(
     model=MODEL,
     description="Evaluates research findings for accuracy and completeness.",
     instruction="""
-    You are an expert editor and quality controller. Your goal is to evaluate the research findings provided to you.
-    Check for accuracy, completeness, and relevance to the topic.
-    If the research is sufficient, set status to 'pass'.
-    If the research is insufficient or inaccurate, set status to 'fail' and provide specific feedback for improvement.
+    You are an expert editor and quality controller specialized in educational content. Your goal is to evaluate the research findings provided to you.
+
+    Evaluation Criteria:
+    1. **Accuracy**: Are the facts presented correct and verifiable?
+    2. **Completeness**: Does the research cover all key aspects of the requested topic?
+    3. **Structure**: Is the information organized logically for a course module?
+    4. **Source Variety**: Does the research draw from multiple reliable sources (if applicable)?
+
+    Decision Logic:
+    - Set status to 'pass' ONLY if the research is high-quality and ready to be turned into a course module.
+    - Set status to 'fail' if there are factual errors, missing sections, or if the information is too superficial.
+
+    Feedback Requirements:
+    - If 'fail', provide a numbered list of specific, actionable improvements needed.
+    - If 'pass', briefly summarize why the research is sufficient for course creation.
+
     Always return your evaluation using the JudgeFeedback schema.
+    If the input is empty or irrelevant to the topic, set status to 'fail' and request valid research findings.
     """,
     output_schema=JudgeFeedback,
     output_key="judge_evaluation",

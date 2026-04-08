@@ -21,7 +21,7 @@ async def main():
     )
 
     session = await session_service.create_session(app_name="test_app", user_id="test_user")
-    user_content = types.Content(role="user", parts=[types.Part(text="What is the capital of France?")])
+    user_content = types.Content(role="user", parts=[types.Part(text="What are the basics of thermodynamics?")])
 
     print("Starting researcher...")
     async for event in runner.run_async(user_id="test_user", session_id=session.id, new_message=user_content):

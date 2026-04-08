@@ -162,7 +162,11 @@ async def chat_stream(request: SimpleChatRequest):
     # Always fetch current agent name from server to be safe
     try:
         agents = await list_agents(agent_server_url)
-        agent_name = agents[0]
+        env_agent_name = os.getenv("AGENT_NAME")
+        if env_agent_name and env_agent_name in agents:
+            agent_name = env_agent_name
+        else:
+            agent_name = agents[0]
         logger.info(f"Using agent: {agent_name}")
     except Exception as e:
         logger.error(f"Failed to list agents: {e}")
@@ -208,12 +212,21 @@ async def chat_stream(request: SimpleChatRequest):
             elif event.get("author") == "content_builder":
                  yield json.dumps({"type": "progress", "text": "✍️ Content Builder is writing the course..."}) + "\n"
 
-            # Accumulate final text
-            if event.get("content"):
-                content = genai_types.Content.model_validate(event["content"])
-                for part in content.parts: # type: ignore
-                    if part.text:
-                        final_text += part.text
+            # Accumulate final text only from the content_builder agent
+            if event.get("author") == "content_builder":
+                if event.get("content"):
+                    content = genai_types.Content.model_validate(event["content"])
+                    for part in content.parts: # type: ignore
+                        if part.text:
+                            final_text += part.text
+            elif not final_text and event.get("author") == "orchestrator":
+                 # Fallback: if content_builder wasn't called or didn't produce text, 
+                 # capture orchestrator's own messages (like errors)
+                 if event.get("content"):
+                    content = genai_types.Content.model_validate(event["content"])
+                    for part in content.parts: # type: ignore
+                        if part.text:
+                            final_text += part.text
 
         logger.info(f"Stream complete. Final text length: {len(final_text)}")
         # Send final result

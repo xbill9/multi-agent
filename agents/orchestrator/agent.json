@@ -1,0 +1,95 @@
+{
+  "additionalInterfaces": null,
+  "capabilities": {
+    "extensions": null,
+    "pushNotifications": null,
+    "stateTransitionHistory": null,
+    "streaming": true
+  },
+  "defaultInputModes": [
+    "text/plain"
+  ],
+  "defaultOutputModes": [
+    "text/plain"
+  ],
+  "description": "A pipeline that researches a topic and then builds a course from it.",
+  "documentationUrl": null,
+  "iconUrl": null,
+  "name": "course_creation_pipeline",
+  "preferredTransport": "JSONRPC",
+  "protocolVersion": "0.3.0",
+  "provider": null,
+  "security": null,
+  "securitySchemes": null,
+  "signatures": null,
+  "skills": [
+    {
+      "description": "A pipeline that researches a topic and then builds a course from it. First, this agent will Iteratively researches and judges until quality standards are met. Finally, this agent will Builds the course..",
+      "examples": [],
+      "id": "course_creation_pipeline",
+      "inputModes": null,
+      "name": "workflow",
+      "outputModes": null,
+      "security": null,
+      "tags": [
+        "sequential_workflow"
+      ]
+    },
+    {
+      "description": "Orchestrates: research_loop: Iteratively researches and judges until quality standards are met.; content_builder: Builds the course.",
+      "examples": null,
+      "id": "course_creation_pipeline-sub-agents",
+      "inputModes": null,
+      "name": "sub-agents",
+      "outputModes": null,
+      "security": null,
+      "tags": [
+        "sequential_workflow",
+        "orchestration"
+      ]
+    },
+    {
+      "description": "Iteratively researches and judges until quality standards are met. This agent will Gathers information using Google Search. , Evaluates research. and execute the escalation_checker agent in a loop (max 3 iterations).",
+      "examples": [],
+      "id": "research_loop_research_loop",
+      "inputModes": null,
+      "name": "research_loop: workflow",
+      "outputModes": null,
+      "security": null,
+      "tags": [
+        "sub_agent:research_loop",
+        "loop_workflow"
+      ]
+    },
+    {
+      "description": "Orchestrates: researcher: Gathers information using Google Search.; judge: Evaluates research.; escalation_checker: No description",
+      "examples": null,
+      "id": "research_loop_research_loop-sub-agents",
+      "inputModes": null,
+      "name": "research_loop: sub-agents",
+      "outputModes": null,
+      "security": null,
+      "tags": [
+        "sub_agent:research_loop",
+        "loop_workflow",
+        "orchestration"
+      ]
+    },
+    {
+      "description": "Builds the course.",
+      "examples": [],
+      "id": "content_builder_content_builder",
+      "inputModes": null,
+      "name": "content_builder: custom",
+      "outputModes": null,
+      "security": null,
+      "tags": [
+        "sub_agent:content_builder",
+        "custom_agent"
+      ]
+    }
+  ],
+  "supportsAuthenticatedExtendedCard": false,
+  "url": "http://127.0.0.1/a2a/orchestrator",
+  "version": "0.0.1"
+}

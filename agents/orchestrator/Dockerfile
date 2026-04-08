@@ -2,25 +2,16 @@ FROM python:3.13-slim
 
 WORKDIR /app
 
-# Set PROJECT_ROOT for pip to resolve local dependencies
-ENV PROJECT_ROOT=/app
+# Copy all source (root context)
+COPY . .
 
-# Copy shared utilities first
-COPY shared /app/shared
-
-# Copy the agent source code (including pyproject.toml and agent source)
-COPY agents/orchestrator /app/agents/orchestrator
-
-# Set working directory to the agent's folder
-WORKDIR /app/agents/orchestrator
-
-# Install the shared utilities first, then the agent
-RUN pip install --no-cache-dir /app/shared
-RUN pip install --no-cache-dir .
+# Install shared and agent
+RUN pip install --no-cache-dir ./shared
+RUN pip install --no-cache-dir ./agents/orchestrator
 
 # Environment variables
 ENV PYTHONUNBUFFERED=1
 ENV HOST 0.0.0.0
 
-# Run using the shared package
-CMD ["python3", "-m", "shared.adk_app", "--host", "0.0.0.0", "--port", "8080", "--a2a", "--trace_to_cloud", "."]
+# Run ADK API Server
+CMD ["python3", "-m", "shared.adk_app", "/app/agents", "--host", "0.0.0.0", "--trace_to_cloud", "--a2a"]

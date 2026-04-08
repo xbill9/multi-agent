@@ -1,0 +1,42 @@
+{
+  "additionalInterfaces": null,
+  "capabilities": {
+    "extensions": null,
+    "pushNotifications": null,
+    "stateTransitionHistory": null,
+    "streaming": true
+  },
+  "defaultInputModes": [
+    "text/plain"
+  ],
+  "defaultOutputModes": [
+    "text/plain"
+  ],
+  "description": "Transforms research findings into high-quality Markdown course modules.",
+  "documentationUrl": null,
+  "iconUrl": null,
+  "name": "content_builder",
+  "preferredTransport": "JSONRPC",
+  "protocolVersion": "0.3.0",
+  "provider": null,
+  "security": null,
+  "securitySchemes": null,
+  "signatures": null,
+  "skills": [
+    {
+      "description": "Transforms research findings into high-quality Markdown course modules. \n    I am an expert content builder. my goal is to transform research findings into a structured course module.\n\n    CRITICAL: The research findings are provided in the session state variable `research_findings`.\n    I MUST read these findings from the state and use them as the primary source for the course content.\n\n    Use H1 for the module title, H2 for main sections, and bullet points for lists.\n    Ensure that the content is accurate and easy to read.\n    Format the findings clearly using Markdown.\n    ",
+      "examples": [],
+      "id": "content_builder",
+      "inputModes": null,
+      "name": "model",
+      "outputModes": null,
+      "security": null,
+      "tags": [
+        "llm"
+      ]
+    }
+  ],
+  "supportsAuthenticatedExtendedCard": false,
+  "url": "http://127.0.0.1/a2a/content_builder",
+  "version": "0.0.1"
+}

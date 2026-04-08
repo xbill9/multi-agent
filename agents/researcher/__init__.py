@@ -12,22 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
-import sys
+from .agent import researcher, root_agent
 
-import google.auth
-
-sys.path.insert(0, os.path.dirname(__file__))
-
-# --- Configuration ---
-os.environ["ADK_SUPPRESS_EXPERIMENTAL_FEATURE_WARNINGS"] = "True"
-# Use default project from credentials if not in .env
-try:
-    _, project_id = google.auth.default()
-    os.environ.setdefault("GOOGLE_CLOUD_PROJECT", project_id) # type: ignore
-except Exception:
-    # If no credentials available, continue without setting project
-    pass
-
-os.environ.setdefault("GOOGLE_CLOUD_LOCATION", "global")
-os.environ.setdefault("GOOGLE_GENAI_USE_VERTEXAI", "False")
+__all__ = ["researcher", "root_agent"]

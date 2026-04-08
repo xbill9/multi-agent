@@ -33,13 +33,19 @@ fi
 echo "Using project ${GOOGLE_CLOUD_PROJECT}."
 echo "Using compute region ${REGION}."
 
+build_images() {
+  echo "Building all images using Cloud Build..."
+  gcloud builds submit --project "${GOOGLE_CLOUD_PROJECT}" --config cloudbuild.yaml .
+}
+
 deploy_researcher() {
   echo "Deploying researcher..."
+  IMAGE_NAME="gcr.io/${GOOGLE_CLOUD_PROJECT}/researcher"
   gcloud run deploy researcher \
-    --source agents/researcher \
+    --image "${IMAGE_NAME}" \
     --project $GOOGLE_CLOUD_PROJECT \
     --region $REGION \
-    --no-allow-unauthenticated \
+    --allow-unauthenticated \
     --set-env-vars GOOGLE_CLOUD_PROJECT="${GOOGLE_CLOUD_PROJECT}" \
     --set-env-vars GOOGLE_GENAI_USE_VERTEXAI="false" \
     --set-env-vars GOOGLE_API_KEY="${GOOGLE_API_KEY}" \
@@ -48,11 +54,12 @@ deploy_researcher() {
 
 deploy_content_builder() {
   echo "Deploying content-builder..."
+  IMAGE_NAME="gcr.io/${GOOGLE_CLOUD_PROJECT}/content-builder"
   gcloud run deploy content-builder \
-    --source agents/content_builder \
+    --image "${IMAGE_NAME}" \
     --project $GOOGLE_CLOUD_PROJECT \
     --region $REGION \
-    --no-allow-unauthenticated \
+    --allow-unauthenticated \
     --set-env-vars GOOGLE_CLOUD_PROJECT="${GOOGLE_CLOUD_PROJECT}" \
     --set-env-vars GOOGLE_GENAI_USE_VERTEXAI="false" \
     --set-env-vars GOOGLE_API_KEY="${GOOGLE_API_KEY}" \
@@ -61,11 +68,12 @@ deploy_content_builder() {
 
 deploy_judge() {
   echo "Deploying judge..."
+  IMAGE_NAME="gcr.io/${GOOGLE_CLOUD_PROJECT}/judge"
   gcloud run deploy judge \
-    --source agents/judge \
+    --image "${IMAGE_NAME}" \
     --project $GOOGLE_CLOUD_PROJECT \
     --region $REGION \
-    --no-allow-unauthenticated \
+    --allow-unauthenticated \
     --set-env-vars GOOGLE_CLOUD_PROJECT="${GOOGLE_CLOUD_PROJECT}" \
     --set-env-vars GOOGLE_GENAI_USE_VERTEXAI="false" \
     --set-env-vars GOOGLE_API_KEY="${GOOGLE_API_KEY}" \
@@ -78,14 +86,15 @@ deploy_orchestrator() {
   CONTENT_BUILDER_URL=$(gcloud run services describe content-builder --region $REGION --format='value(status.url)' --project $GOOGLE_CLOUD_PROJECT)
   JUDGE_URL=$(gcloud run services describe judge --region $REGION --format='value(status.url)' --project $GOOGLE_CLOUD_PROJECT)
 
+  IMAGE_NAME="gcr.io/${GOOGLE_CLOUD_PROJECT}/orchestrator"
   gcloud run deploy orchestrator \
-    --source agents/orchestrator \
+    --image "${IMAGE_NAME}" \
     --project $GOOGLE_CLOUD_PROJECT \
     --region $REGION \
-    --no-allow-unauthenticated \
-    --set-env-vars RESEARCHER_AGENT_CARD_URL=$RESEARCHER_URL/a2a/agent/.well-known/agent-card.json \
-    --set-env-vars JUDGE_AGENT_CARD_URL=$JUDGE_URL/a2a/agent/.well-known/agent-card.json \
-    --set-env-vars CONTENT_BUILDER_AGENT_CARD_URL=$CONTENT_BUILDER_URL/a2a/agent/.well-known/agent-card.json \
+    --allow-unauthenticated \
+    --set-env-vars RESEARCHER_AGENT_CARD_URL=$RESEARCHER_URL/a2a/researcher/.well-known/agent-card.json \
+    --set-env-vars JUDGE_AGENT_CARD_URL=$JUDGE_URL/a2a/judge/.well-known/agent-card.json \
+    --set-env-vars CONTENT_BUILDER_AGENT_CARD_URL=$CONTENT_BUILDER_URL/a2a/content_builder/.well-known/agent-card.json \
     --set-env-vars GOOGLE_CLOUD_PROJECT="${GOOGLE_CLOUD_PROJECT}" \
     --set-env-vars GOOGLE_GENAI_USE_VERTEXAI="false" \
     --set-env-vars GOOGLE_API_KEY="${GOOGLE_API_KEY}" \
@@ -95,12 +104,15 @@ deploy_orchestrator() {
 deploy_course_creator() {
   echo "Deploying course-creator..."
   ORCHESTRATOR_URL=$(gcloud run services describe orchestrator --region $REGION --format='value(status.url)' --project $GOOGLE_CLOUD_PROJECT)
+  
+  IMAGE_NAME="gcr.io/${GOOGLE_CLOUD_PROJECT}/course-creator"
   gcloud run deploy course-creator \
-    --source app \
+    --image "${IMAGE_NAME}" \
     --project $GOOGLE_CLOUD_PROJECT \
     --region $REGION \
     --allow-unauthenticated \
     --set-env-vars AGENT_SERVER_URL=$ORCHESTRATOR_URL \
+    --set-env-vars AGENT_NAME=orchestrator \
     --set-env-vars GOOGLE_CLOUD_PROJECT="${GOOGLE_CLOUD_PROJECT}"
 }
 
@@ -117,6 +129,7 @@ elif [[ "${SERVICE}" == "orchestrator" ]]; then
 elif [[ "${SERVICE}" == "course-creator" ]]; then
   deploy_course_creator
 elif [[ "${SERVICE}" == "" ]]; then
+  build_images
   deploy_researcher
   deploy_content_builder
   deploy_judge

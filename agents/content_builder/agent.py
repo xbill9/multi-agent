@@ -16,16 +16,27 @@ async def log_before_agent(callback_context: CallbackContext) -> None:
     logger.info(f"Agent {callback_context.agent_name} starting execution. Session: {callback_context.session}")
     state_dict = callback_context.state.to_dict()
 
-    if "research_findings" in state_dict:
-        findings = state_dict['research_findings']
-        logger.info(f"Injecting research_findings into user context (length: {len(str(findings))})")
+    findings = state_dict.get("research_findings")
+    
+    # Fallback for A2A: Look for findings in the session history if not in state
+    if not findings:
+        logger.info("research_findings not in state, searching session history...")
+        for event in reversed(callback_context.session.events):
+            if event.author == "researcher" and event.content:
+                text_parts = [p.text for p in event.content.parts if p.text]
+                if text_parts:
+                    findings = "\n".join(text_parts)
+                    logger.info(f"Found findings from history (author: {event.author})")
+                    break
 
+    if findings:
+        logger.info(f"Injecting research_findings into user context (length: {len(str(findings))})")
         # Inject the findings into the first user message part to ensure the LLM sees them
         if callback_context.user_content and callback_context.user_content.parts:
             original_text = callback_context.user_content.parts[0].text or ""
             callback_context.user_content.parts[0].text = f"RESEARCH FINDINGS:\n{findings}\n\nUSER QUERY:\n{original_text}"
     else:
-        logger.warning("research_findings NOT found in state!")
+        logger.warning("research_findings NOT found in state or history!")
 
 async def log_after_agent(callback_context: CallbackContext) -> genai_types.Content | None:
     """Log after the agent finishes."""

@@ -4,7 +4,7 @@ version = "0.1.0"
 description = "Judge microservice agent"
 requires-python = ">=3.13"
 dependencies = [
-    "shared-utils @ file:///${PROJECT_ROOT}/shared",
+    "shared-utils",
     "google-adk",
     "a2a-sdk",
     "fastapi",
@@ -14,8 +14,15 @@ dependencies = [
     "opentelemetry-exporter-gcp-trace",
 ]
 
+[project.optional-dependencies]
+dev = [
+    "pytest",
+    "pytest-asyncio",
+    "ruff",
+]
+
 [tool.hatch.build.targets.wheel]
-packages = ["agent"]
+packages = ["."]
 
 [build-system]
 requires = ["hatchling"]

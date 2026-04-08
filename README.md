@@ -6,11 +6,11 @@ A multi-agent system built with Google's Agent Development Kit (ADK) and Agent-t
 
 This project uses a distributed microservices architecture where each agent runs in its own container and communicates via the A2A protocol:
 
-*   **Orchestrator Service (`agents/orchestrator`):** The main entry point for agent logic. It manages the workflow using `LoopAgent` and `SequentialAgent`, and connects to other agents using `RemoteA2aAgent`. It includes an **EscalationChecker** to determine when to break the research loop.
+*   **Orchestrator Service (`agents/orchestrator`):** The main entry point for agent logic. It manages the workflow using `LoopAgent` and `SequentialAgent`, and connects to other agents using `RemoteA2aAgent`. It includes an **EscalationChecker** to determine when to break the research loop, **StateCapturer** to manage data flow between agents, and **ProgressAgent** to provide real-time status updates.
 *   **Researcher Service (`agents/researcher`):** A standalone agent that gathers information using the `google_search` tool.
-*   **Judge Service (`agents/judge`):** A standalone agent that evaluates research quality against a Pydantic schema.
+*   **Judge Service (`agents/judge`):** A standalone agent that evaluates research quality against a Pydantic schema (`JudgeFeedback`).
 *   **Content Builder Service (`agents/content_builder`):** A standalone agent that compiles the final course module in Markdown.
-*   **Web App (`app/`):** A FastAPI backend with a React frontend that streams agent events to the user using Server-Sent Events (SSE).
+*   **Web App (`app/`):** A FastAPI backend with a Vanilla TypeScript + Vite frontend that streams agent events to the user using Server-Sent Events (SSE).
 
 ## Project Structure
 
@@ -21,7 +21,7 @@ multi-agent/
 │   ├── researcher/       # Information gathering (Google Search)
 │   ├── judge/            # Quality control (Structured Feedback)
 │   └── content_builder/  # Content generation (Markdown)
-├── app/                  # Web application (FastAPI + React)
+├── app/                  # Web application (FastAPI + Vanilla TS Frontend)
 ├── shared/               # Shared utilities (Symlinked into agents)
 │   ├── a2a_utils.py      # A2A URL rewriting middleware
 │   ├── adk_app.py        # Standardized ADK FastAPI wrapper
@@ -39,9 +39,10 @@ multi-agent/
 ## Requirements
 
 *   **Python 3.13+**
-*   **uv** or **pip**: For dependency management.
+*   **Node.js & npm**: For frontend development and builds.
+*   **pip** or **uv**: For dependency management.
 *   **Google Cloud SDK**: For authentication and deployment.
-*   **Google API Key**: Required if not using Vertex AI for Gemini.
+*   **Google API Key**: Required for Gemini (unless using Vertex AI).
 
 ## Quick Start
 
@@ -55,9 +56,14 @@ multi-agent/
 
 2.  **Install Dependencies:**
     ```bash
+    # Standard installation using pip
     make install
-    # or
+    
+    # Optional: using uv
     uv sync
+    
+    # Frontend dependencies
+    cd app/frontend && npm install
     ```
 
 3.  **Run Locally:**
@@ -67,7 +73,8 @@ multi-agent/
     This starts all agents and the web app. The Researcher, Judge, and Content Builder run on ports 8001-8003, the Orchestrator on 8004, and the Web App on 8000.
 
 4.  **Access the App:**
-    Open **http://localhost:8000** in your browser. (The Vite dev server runs on 5173 for hot-reloading).
+    -   **http://localhost:8000**: Main entry point (FastAPI serving the built frontend).
+    -   **http://localhost:5173**: Vite dev server (supports hot-reloading for UI development).
 
 ## Testing
 
