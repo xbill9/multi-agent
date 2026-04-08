@@ -1,5 +1,6 @@
 # Makefile for Researcher Agent
 
+SHELL := /bin/bash
 PYTHON = python3
 PIP = pip3
 PORT = 8001
@@ -8,7 +9,19 @@ PORT = 8001
 PROJECT_ROOT := $(shell git rev-parse --show-toplevel 2>/dev/null || pwd)
 export PROJECT_ROOT
 
-.PHONY: help install run lint format test deploy clean a2a test-invoke endpoint status
+# Load .env file if it exists
+ifneq (,$(wildcard ./.env))
+    include .env
+    export
+endif
+
+.PHONY: help install run lint format test deploy clean a2a test-invoke endpoint status check-env
+
+check-env:
+	@if [ -z "$(GOOGLE_API_KEY)" ]; then \
+		echo "Error: GOOGLE_API_KEY is not set. Please set it in .env or as an environment variable"; \
+		exit 1; \
+	fi
 
 help:
 	@echo "Available targets:"
@@ -41,7 +54,7 @@ status:
 install:
 	$(PIP) install -e .
 
-run:
+run: check-env
 	$(PYTHON) -m shared.adk_app --port $(PORT) --a2a
 
 lint:
@@ -51,7 +64,7 @@ format:
 	ruff format .
 	ruff check . --fix
 
-test:
+test: check-env
 	pytest
 
 clean:
@@ -68,10 +81,14 @@ SERVICE_URL ?= $(shell gcloud run services describe researcher --platform manage
 AGENT_NAME ?= researcher
 TOPIC ?= The impact of AI on software engineering
 
-deploy:
+deploy: check-env
 	@echo "Deploying researcher agent to Cloud Run..."
+	@echo "Building image from project root: $(PROJECT_ROOT)"
+	gcloud builds submit $(PROJECT_ROOT) \
+		--project $(GOOGLE_CLOUD_PROJECT) \
+		--config <(printf "steps:\n- name: 'gcr.io/cloud-builders/docker'\n  args: ['build', '-t', 'gcr.io/$(GOOGLE_CLOUD_PROJECT)/researcher', '-f', 'agents/researcher/Dockerfile', '.']\nimages:\n- 'gcr.io/$(GOOGLE_CLOUD_PROJECT)/researcher'")
 	gcloud run deploy researcher \
-		--source . \
+		--image gcr.io/$(GOOGLE_CLOUD_PROJECT)/researcher \
 		--project $(GOOGLE_CLOUD_PROJECT) \
 		--region $(REGION) \
 		--allow-unauthenticated \

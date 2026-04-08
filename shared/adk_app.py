@@ -19,6 +19,9 @@ import sys
 import warnings
 from pathlib import Path
 
+# Ensure shared directory is in path
+sys.path.insert(0, os.path.dirname(__file__))
+
 import click
 import uvicorn
 from a2a_utils import a2a_card_dispatch
@@ -31,7 +34,6 @@ warnings.filterwarnings("ignore", message=r".*\[EXPERIMENTAL\].*", category=User
 os.environ["ADK_SUPPRESS_EXPERIMENTAL_FEATURE_WARNINGS"] = "True"
 
 # Ensure shared directory is in path
-sys.path.insert(0, os.path.dirname(__file__))
 
 LOG_LEVELS = click.Choice(
     ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"],
@@ -122,7 +124,6 @@ def main(
             a2a=a2a,
             host=host,
             port=port,
-            url_prefix=url_prefix,
             extra_plugins=extra_plugins,
         )
 
