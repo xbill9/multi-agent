@@ -68,9 +68,11 @@ SERVICE_URL ?= $(shell gcloud run services describe judge --platform managed --r
 AGENT_NAME ?= judge
 
 deploy:
+	@echo "Building judge image with Cloud Build..."
+	gcloud builds submit $(PROJECT_ROOT) --config judge.cloudbuild.yaml
 	@echo "Deploying judge agent to Cloud Run..."
 	gcloud run deploy judge \
-		--source . \
+		--image gcr.io/$(GOOGLE_CLOUD_PROJECT)/judge \
 		--project $(GOOGLE_CLOUD_PROJECT) \
 		--region $(REGION) \
 		--allow-unauthenticated \

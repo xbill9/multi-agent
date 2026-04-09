@@ -3,6 +3,7 @@ import logging
 import os
 from collections.abc import AsyncGenerator
 from typing import Any
+from urllib.parse import urlparse
 
 import httpx
 from a2a_utils import a2a_card_dispatch
@@ -110,7 +111,7 @@ async def list_agents(agent_server_origin: str) -> list[str]:
 
 async def query_adk_server(
         agent_server_origin: str, agent_name: str, user_id: str, message: str, session_id: str
-) -> AsyncGenerator[dict[str, Any]]:
+) -> AsyncGenerator[dict[str, Any], None]:
     httpx_client = await get_client(agent_server_origin)
     request = {
         "appName": agent_name,
@@ -120,32 +121,41 @@ async def query_adk_server(
             "role": "user",
             "parts": [{"text": message}]
         },
-        "streaming": False
+        "streaming": True
     }
-    async with aconnect_sse(
-        httpx_client,
-        "POST",
-        f"{agent_server_origin}/run_sse",
-        json=request
-    ) as event_source:
-        if event_source.response.is_error:
-            await event_source.response.aread()
-            logger.error(f"Error from agent server: {event_source.response.status_code} - {event_source.response.text}")
-            event = {
-                "author": agent_name,
-                "content":{
-                    "parts": [
-                        {
-                            "text": f"Error {event_source.response.text}"
-                        }
-                    ]
+    logger.info(f"Connecting to ADK server: {agent_server_origin}/run_sse with streaming=True")
+    try:
+        async with aconnect_sse(
+            httpx_client,
+            "POST",
+            f"{agent_server_origin}/run_sse",
+            json=request
+        ) as event_source:
+            if event_source.response.status_code != 200:
+                await event_source.response.aread()
+                logger.error(f"Error from agent server: {event_source.response.status_code} - {event_source.response.text}")
+                yield {
+                    "author": agent_name,
+                    "content": {
+                        "parts": [{"text": f"❌ Server Error: {event_source.response.status_code}"}]
+                    }
                 }
-            }
-            yield event
-        else:
+                return
+
             async for server_event in event_source.aiter_sse():
-                event = server_event.json()
-                yield event
+                try:
+                    event = server_event.json()
+                    yield event
+                except Exception as e:
+                    logger.error(f"Failed to parse SSE event: {e}")
+    except Exception as e:
+        logger.error(f"SSE connection failed: {e}")
+        yield {
+            "author": agent_name,
+            "content": {
+                "parts": [{"text": f"❌ Connection Failed: {e}"}]
+            }
+        }
 
 class SimpleChatRequest(BaseModel):
     message: str
@@ -203,34 +213,68 @@ async def chat_stream(request: SimpleChatRequest):
         yield json.dumps({"type": "progress", "text": "🚀 Connected to backend, starting research..."}) + "\n"
 
         async for event in events:
-            logger.info(f"Received event from agent: {event.get('author')}", extra={"event_keys": list(event.keys())})
-            # Send progress updates based on which agent is active
-            if event.get("author") == "researcher":
+            author = event.get("author", "")
+            
+            # Check for errors in the event
+            error_msg = event.get("errorMessage")
+            if error_msg:
+                yield json.dumps({"type": "progress", "text": f"❌ Error from {author}: {error_msg}"}) + "\n"
+                logger.error(f"Error from agent {author}: {error_msg}")
+
+            # Extract text parts helper
+            def extract_all_text(obj):
+                if isinstance(obj, str):
+                    return []
+                if isinstance(obj, dict):
+                    texts = []
+                    for k, v in obj.items():
+                        if k == "text" and isinstance(v, str):
+                            texts.append(v)
+                        else:
+                            texts.extend(extract_all_text(v))
+                    return texts
+                if isinstance(obj, list):
+                    texts = []
+                    for item in obj:
+                        texts.extend(extract_all_text(item))
+                    return texts
+                return []
+
+            text_parts = extract_all_text(event)
+            
+            # 1. Handle explicit progress agents
+            if author.startswith("progress_"):
+                for tp in text_parts:
+                    yield json.dumps({"type": "progress", "text": tp.strip()}) + "\n"
+                continue
+
+            # 2. Handle progress updates for actual agents (UI updates)
+            if author == "researcher":
                  yield json.dumps({"type": "progress", "text": "🔍 Researcher is gathering information..."}) + "\n"
-            elif event.get("author") == "judge":
+            elif author == "judge":
                  yield json.dumps({"type": "progress", "text": "⚖️ Judge is evaluating findings..."}) + "\n"
-            elif event.get("author") == "content_builder":
+            elif author == "content_builder":
                  yield json.dumps({"type": "progress", "text": "✍️ Content Builder is writing the course..."}) + "\n"
 
-            # Accumulate final text only from the content_builder agent
-            if event.get("author") == "content_builder":
-                if event.get("content"):
-                    content = genai_types.Content.model_validate(event["content"])
-                    for part in content.parts: # type: ignore
-                        if part.text:
-                            final_text += part.text
-            elif not final_text and event.get("author") == "orchestrator":
-                 # Fallback: if content_builder wasn't called or didn't produce text, 
-                 # capture orchestrator's own messages (like errors)
-                 if event.get("content"):
-                    content = genai_types.Content.model_validate(event["content"])
-                    for part in content.parts: # type: ignore
-                        if part.text:
-                            final_text += part.text
+            # 3. Accumulate final text ONLY from content_builder
+            if author == "content_builder":
+                for tp in text_parts:
+                    final_text += tp
 
         logger.info(f"Stream complete. Final text length: {len(final_text)}")
+        
+        # Surgical cleanup for known progress messages using specific regex
+        import re
+        final_text = re.sub(r"🚀\s*Starting the course creation pipeline\.\.\.", "", final_text)
+        final_text = re.sub(r"✍️\s*Building the final course content\.\.\.", "", final_text)
+        final_text = re.sub(r"🔍\s*Research is starting\.\.\.", "", final_text)
+        final_text = re.sub(r"⚖️\s*Judge is evaluating findings\.\.\.", "", final_text)
+        
+        # Final trim
+        final_text = final_text.strip()
+        
         # Send final result
-        yield json.dumps({"type": "result", "text": final_text.strip()}) + "\n"
+        yield json.dumps({"type": "result", "text": final_text}) + "\n"
 
     return StreamingResponse(event_generator(), media_type="application/x-ndjson")
 

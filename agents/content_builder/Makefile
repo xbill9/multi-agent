@@ -17,7 +17,7 @@ export PROJECT_ROOT
 TOPIC ?= Please generate a course module based on these findings.
 RESEARCH_FINDINGS ?= The Gemini 2.5 models are the latest from Google. They offer improved reasoning and speed. Key features include large context windows and native multimodal capabilities.
 
-.PHONY: help install run lint test clean deploy a2a endpoint test-invoke status
+.PHONY: help install run lint test clean build deploy a2a endpoint test-invoke status
 
 help:
 	@echo "Available targets:"
@@ -27,6 +27,7 @@ help:
 	@echo "  lint     - Run linting (ruff)"
 	@echo "  test     - Run tests (pytest)"
 	@echo "  clean    - Remove temporary files and cache"
+	@echo "  build    - Build and deploy using Cloud Build"
 	@echo "  deploy   - Deploy to Cloud Run"
 	@echo "  endpoint - Get the Cloud Run service URL"
 	@echo "  a2a      - Fetch the A2A agent card (uses SERVICE_URL if set/found, else localhost)"
@@ -63,6 +64,9 @@ clean:
 	rm -rf .adk/artifacts
 	rm -rf .pytest_cache
 	rm -rf .ruff_cache
+
+build:
+	gcloud builds submit --config cloudbuild.yaml .
 
 deploy:
 	gcloud run deploy $(SERVICE_NAME) \

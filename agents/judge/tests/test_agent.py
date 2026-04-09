@@ -11,7 +11,7 @@ def test_judge_initialization():
     assert judge.output_schema.__name__ == "JudgeFeedback"
 
 
-@pytest.mark.asyncio
+@pytest.mark.anyio
 async def test_log_after_judge_dict(caplog):
     """Test log_after_judge with a dictionary in state."""
     from unittest.mock import MagicMock
@@ -27,7 +27,7 @@ async def test_log_after_judge_dict(caplog):
     assert "Judge evaluation complete. Status: pass" in caplog.text
 
 
-@pytest.mark.asyncio
+@pytest.mark.anyio
 async def test_log_after_judge_object(caplog):
     """Test log_after_judge with a Pydantic-like object in state."""
     from unittest.mock import MagicMock

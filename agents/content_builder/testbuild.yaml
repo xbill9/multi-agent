@@ -1,0 +1,7 @@
+steps:
+  - name: 'gcr.io/cloud-builders/docker'
+    entrypoint: 'ls'
+    args: ['-la', '.']
+  - name: 'gcr.io/cloud-builders/docker'
+    entrypoint: 'ls'
+    args: ['-la', 'shared']

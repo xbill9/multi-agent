@@ -82,17 +82,12 @@ AGENT_NAME ?= researcher
 TOPIC ?= The impact of AI on software engineering
 
 deploy: check-env
-	@echo "Deploying researcher agent to Cloud Run..."
-	@echo "Building image from project root: $(PROJECT_ROOT)"
+	@echo "Deploying researcher agent to Cloud Run using cloudbuild.yaml..."
+	@echo "Building from project root: $(PROJECT_ROOT)"
 	gcloud builds submit $(PROJECT_ROOT) \
 		--project $(GOOGLE_CLOUD_PROJECT) \
-		--config <(printf "steps:\n- name: 'gcr.io/cloud-builders/docker'\n  args: ['build', '-t', 'gcr.io/$(GOOGLE_CLOUD_PROJECT)/researcher', '-f', 'agents/researcher/Dockerfile', '.']\nimages:\n- 'gcr.io/$(GOOGLE_CLOUD_PROJECT)/researcher'")
-	gcloud run deploy researcher \
-		--image gcr.io/$(GOOGLE_CLOUD_PROJECT)/researcher \
-		--project $(GOOGLE_CLOUD_PROJECT) \
-		--region $(REGION) \
-		--allow-unauthenticated \
-		--set-env-vars GOOGLE_CLOUD_PROJECT="$(GOOGLE_CLOUD_PROJECT)",GOOGLE_GENAI_USE_VERTEXAI="false",GOOGLE_API_KEY="$(GOOGLE_API_KEY)",GENAI_MODEL="$(GENAI_MODEL)"
+		--config cloudbuild.yaml \
+		--substitutions=_REGION=$(REGION),_GENAI_MODEL=$(GENAI_MODEL),_GOOGLE_API_KEY=$(GOOGLE_API_KEY)
 
 a2a:
 	@if [ -z "$(SERVICE_URL)" ]; then echo "Error: SERVICE_URL is not set. Deploy the agent first or provide SERVICE_URL=..."; exit 1; fi

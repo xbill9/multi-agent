@@ -43,7 +43,7 @@ async def test_invoke(url, agent_name, input_text):
                 result = response.json()
                 print("Response received:")
                 print(json.dumps(result, indent=2))
-                
+
                 if "error" in result:
                     print(f"\nResult contains error: {result['error']}")
                 elif "result" in result:
@@ -63,5 +63,5 @@ if __name__ == "__main__":
     service_url = sys.argv[1]
     name = sys.argv[2]
     text = sys.argv[3] if len(sys.argv) > 3 else "Python is a versatile programming language."
-    
+
     asyncio.run(test_invoke(service_url, name, text))

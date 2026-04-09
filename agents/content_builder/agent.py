@@ -17,7 +17,7 @@ async def log_before_agent(callback_context: CallbackContext) -> None:
     state_dict = callback_context.state.to_dict()
 
     findings = state_dict.get("research_findings")
-    
+
     # Fallback for A2A: Look for findings in the session history if not in state
     if not findings:
         logger.info("research_findings not in state, searching session history...")

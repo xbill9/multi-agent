@@ -1,0 +1,37 @@
+# Cloud Build configuration for the Researcher agent.
+# This should be run from the root of the multi-agent project:
+# gcloud builds submit --config agents/researcher/cloudbuild.yaml .
+steps:
+  # Build the container image
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['build', '-t', 'gcr.io/$PROJECT_ID/researcher', '-f', 'agents/researcher/Dockerfile', '.']
+
+  # Push the container image to Container Registry
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['push', 'gcr.io/$PROJECT_ID/researcher']
+
+  # Deploy container image to Cloud Run
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: gcloud
+    args:
+      - 'run'
+      - 'deploy'
+      - 'researcher'
+      - '--image'
+      - 'gcr.io/$PROJECT_ID/researcher'
+      - '--region'
+      - '${_REGION}'
+      - '--allow-unauthenticated'
+      - '--set-env-vars'
+      - 'GOOGLE_CLOUD_PROJECT=$PROJECT_ID,GOOGLE_GENAI_USE_VERTEXAI=false,GENAI_MODEL=${_GENAI_MODEL},GOOGLE_API_KEY=${_GOOGLE_API_KEY}'
+
+images:
+  - 'gcr.io/$PROJECT_ID/researcher'
+
+substitutions:
+  _REGION: us-central1
+  _GENAI_MODEL: gemini-2.5-flash
+  _GOOGLE_API_KEY: ''
+
+options:
+  logging: CLOUD_LOGGING_ONLY

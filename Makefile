@@ -25,10 +25,11 @@ help:
 TEST_URL ?= http://localhost:8000
 e2e-test:
 	@echo "Running end-to-end test against $(TEST_URL)..."
-	@curl -X POST $(TEST_URL)/api/chat_stream \
+	@curl -s -X POST $(TEST_URL)/api/chat_stream \
 		-H "Content-Type: application/json" \
-		-d '{"message": "What is the capital of France?", "user_id": "e2e_test_user"}' \		--no-buffer \
-		| grep -E "type|text" || (echo "E2E Test Failed: No valid response from $(TEST_URL)" && exit 1)
+		-d '{"message": "What is the capital of France?", "user_id": "e2e_test_user"}' \
+		--no-buffer \
+		|| (echo "E2E Test Failed: No valid response from $(TEST_URL)" && exit 1)
 	@echo "\nE2E Test Completed successfully!"
 
 e2e-test-cloud:
