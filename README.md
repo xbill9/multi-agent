@@ -6,11 +6,11 @@ A multi-agent system built with Google's Agent Development Kit (ADK) and Agent-t
 
 This project uses a distributed microservices architecture where each agent runs in its own container and communicates via the A2A protocol:
 
-*   **Orchestrator Service (`agents/orchestrator`):** The main entry point for agent logic. It manages the workflow using `LoopAgent` and `SequentialAgent`, and connects to other agents using `RemoteA2aAgent`. It includes an **EscalationChecker** to determine when to break the research loop, **StateCapturer** to manage data flow between agents, and **ProgressAgent** to provide real-time status updates.
-*   **Researcher Service (`agents/researcher`):** A standalone agent that gathers information using the `google_search` tool.
-*   **Judge Service (`agents/judge`):** A standalone agent that evaluates research quality against a Pydantic schema (`JudgeFeedback`).
-*   **Content Builder Service (`agents/content_builder`):** A standalone agent that compiles the final course module in Markdown.
-*   **Web App (`app/`):** A FastAPI backend with a Vanilla TypeScript + Vite frontend that streams agent events to the user using Server-Sent Events (SSE).
+*   **Orchestrator Service (`agents/orchestrator`):** Manages the overall course creation pipeline using **`SequentialAgent`**. It implements an iterative Research-Judge loop with **`LoopAgent`** (max 2 iterations). Key components include **`TopicCapturer`**, **`EscalationChecker`**, **`ResearchGuard`**, **`StateCapturer`**, and **`ProgressAgent`** for status updates.
+*   **Researcher Service (`agents/researcher`):** Gathers detailed topic information using the `google_search` tool.
+*   **Judge Service (`agents/judge`):** Evaluates research quality against a Pydantic schema (`JudgeFeedback`).
+*   **Content Builder Service (`agents/content_builder`):** Compiles validated research into a professional Markdown course module.
+*   **Web App (`app/`):** A FastAPI backend with a Vanilla TypeScript + Vite frontend that streams real-time agent events via SSE.
 
 ## Project Structure
 
@@ -31,7 +31,8 @@ multi-agent/
 ├── run_local.sh          # Local development startup script
 ├── deploy.sh             # Cloud Run deployment script
 ├── init.sh               # Project creation and billing setup script
-├── init2.sh              # Service enablement and .env initialization
+├── init2.sh              # Service enablement and environment initialization
+├── set_adc.sh            # GCloud Application Default Credentials setup
 ├── set_env.sh            # Local .env generation script
 └── *_test.sh             # Agent-specific testing scripts
 ```
@@ -56,14 +57,11 @@ multi-agent/
 
 2.  **Install Dependencies:**
     ```bash
-    # Standard installation using pip
+    # This installs root, agents, app, and frontend dependencies
     make install
     
     # Optional: using uv
     uv sync
-    
-    # Frontend dependencies
-    cd app/frontend && npm install
     ```
 
 3.  **Run Locally:**

@@ -228,7 +228,7 @@ research_loop = LoopAgent(
         StateCapturer(output_key="judge_feedback", author_filter="judge"),
         EscalationChecker(name="escalation_checker")
     ],
-    max_iterations=1,
+    max_iterations=2,
 )
 
 class ResearchGuard(BaseAgent):

@@ -13,40 +13,29 @@ export GOOGLE_GENAI_USE_VERTEXAI = False
 export LOG_LEVEL = DEBUG
 export GENAI_MODEL = gemini-2.5-flash
 
-.PHONY: install run run-local restart-local frontend lint test deploy status check-local endpoint a2a clean help researcher content-builder judge orchestrator course-creator researcher-local judge-local content-builder-local orchestrator-local backend-local frontend-local agents-local stop-local start-local check-frontend build-images deploy-parallel
+.PHONY: install run run-local restart-local frontend lint test test-researcher test-judge test-content-builder test-orchestrator test-remote deploy status check-local endpoint a2a clean help researcher content-builder judge orchestrator course-creator researcher-local judge-local content-builder-local orchestrator-local backend-local frontend-local agents-local stop-local start-local check-frontend build-images deploy-parallel
 
 help:
 	@echo "Available commands:"
-	@echo "  install               - Install dependencies using pip"
-	@echo "  run                   - Start all agent services and the web app locally (alias for start-local)"
-	@echo "  run-local             - Alias for run"
-	@echo "  restart-local         - Stop and start all local services"
-	@echo "  start-local           - Start all agents, backend, and frontend locally in background"
-	@echo "  stop-local            - Stop all locally running agents and servers"
-	@echo "  agents-local          - Start all four agents (Researcher, Judge, Content Builder, Orchestrator) locally"
-	@echo "  researcher-local      - Start the Researcher agent locally on port 8001"
-	@echo "  judge-local           - Start the Judge agent locally on port 8002"
-	@echo "  content-builder-local - Start the Content Builder agent locally on port 8003"
-	@echo "  orchestrator-local    - Start the Orchestrator agent locally on port 8004"
-	@echo "  backend-local         - Start the App Backend locally on port 8000"
-	@echo "  frontend-local        - Start the Frontend (Vite) dev server"
-	@echo "  frontend              - Build the frontend (Vite) to app/dist/"
-	@echo "  lint                  - Run ruff to check for linting issues"
-	@echo "  test                  - Run pytest for backend and agent tests"
-	@echo "  deploy                - Deploy all services to Google Cloud Run (parallel)"
-	@echo "  deploy-parallel       - Alias for deploy"
-	@echo "  build-images          - Build all service images using Cloud Build"
-	@echo "  status                - Check the deployment status on Google Cloud Run"
-	@echo "  endpoint              - Show the URLs for all deployed services"
-	@echo "  a2a                   - Show the A2A endpoints for all deployed agents"
-	@echo "  clean                 - Remove temporary files and caches"
+	@echo "  install               - Install all dependencies for root, agents, and app"
+	@echo "  run                   - Start all services locally (alias for start-local)"
+	@echo "  start-local           - Start all local services in background"
+	@echo "  stop-local            - Stop all local processes"
+	@echo "  test                  - Run all tests (pytest)"
+	@echo "  test-researcher       - Test the Researcher agent directly"
+	@echo "  test-judge            - Test the Judge agent directly"
+	@echo "  test-orchestrator     - Test the Orchestrator logic"
+	@echo "  lint                  - Run linting checks (ruff)"
+	@echo "  deploy                - Deploy all services to Cloud Run"
+	@echo "  clean                 - Remove caches and logs"
 
 TEST_URL ?= http://localhost:8000
+TEST_MESSAGE ?= "Create a short course about the history of the internet"
 e2e-test:
 	@echo "Running end-to-end test against $(TEST_URL)..."
 	@curl -s -X POST $(TEST_URL)/api/chat_stream \
 		-H "Content-Type: application/json" \
-		-d '{"message": "What is the capital of France?", "user_id": "e2e_test_user"}' \
+		-d '{"message": $(TEST_MESSAGE), "user_id": "e2e_test_user"}' \
 		--no-buffer \
 		|| (echo "E2E Test Failed: No valid response from $(TEST_URL)" && exit 1)
 	@echo "\nE2E Test Completed successfully!"
@@ -59,9 +48,26 @@ e2e-test-cloud:
 	fi; \
 	$(MAKE) e2e-test TEST_URL=$$CC_URL
 
+test-remote:
+	@CC_URL=$$(gcloud run services describe course-creator --format='value(status.url)' --region $(GOOGLE_CLOUD_LOCATION) 2>/dev/null); \
+	if [ -z "$$CC_URL" ]; then \
+		echo "ERROR: Could not find course-creator service URL in region $(GOOGLE_CLOUD_LOCATION). Is it deployed?"; \
+		exit 1; \
+	fi; \
+	echo "Testing remote flow at $$CC_URL..."; \
+	curl -s -X POST "$$CC_URL/api/chat_stream" \
+		-H "Content-Type: application/json" \
+		-d '{"message": "Basics of Quantum Computing", "user_id": "remote_test_user"}' \
+		--no-buffer | grep --line-buffered -E "type|text" || (echo "Remote Test Failed" && exit 1)
+	@echo "\nRemote flow test completed!"
+
 install:
+	@echo "Installing root dependencies..."
 	pip install -e ".[dev,lint]"
+	@echo "Installing agent and app dependencies..."
 	for dir in agents/* app; do (cd $$dir && pip install -e .); done
+	@echo "Installing frontend dependencies..."
+	cd app/frontend && npm install
 
 run: start-local
 
@@ -143,6 +149,18 @@ lint:
 
 test:
 	python -m pytest
+
+test-researcher:
+	./research_test.sh
+
+test-judge:
+	./judge_test.sh
+
+test-orchestrator:
+	python agents/orchestrator/test_orchestrator.py
+
+test-content-builder:
+	python agents/content_builder/tests/test_agent.py
 
 deploy: deploy-parallel
 

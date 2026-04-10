@@ -16,24 +16,21 @@ The AI Course Creator is a distributed multi-agent system designed to autonomous
 ### Key Architectural Components
 
 1.  **Orchestrator (`agents/orchestrator`):**
-    *   Uses `SequentialAgent` to define a high-level pipeline.
-    *   Uses `LoopAgent` with `max_iterations=2` to implement an iterative Research-Judge feedback loop.
-    *   Employs `RemoteA2aAgent` to connect to distributed services over HTTP.
+    *   **`SequentialAgent`**: Defines the overall pipeline (`course_creation_pipeline`).
+    *   **`TopicCapturer`**: Extracts the refined research topic from user input.
+    *   **`LoopAgent`**: Implements the iterative Research-Judge loop with `max_iterations=2`.
+    *   **`EscalationChecker`**: Inspects `judge_feedback` and signals the loop to break if research is approved.
+    *   **`ResearchGuard`**: Validates final findings before content generation.
+    *   **`StateCapturer` & `ProgressAgent`**: Manages state transitions and real-time SSE progress updates.
 2.  **Researcher (`agents/researcher`):**
     *   Powered by `gemini-2.5-flash` (recommended).
     *   Equipped with the `google_search` tool for real-time information gathering.
 3.  **Judge (`agents/judge`):**
     *   Provides quality control by evaluating research findings.
     *   Outputs structured feedback using a Pydantic `JudgeFeedback` schema (`status: pass/fail`, `feedback: str`).
-4.  **Escalation Checker (`agents/orchestrator/agent.py`):**
-    *   A custom `BaseAgent` that inspects `judge_feedback` in the session state.
-    *   Yields an `escalate=True` action to break the `LoopAgent` when research is approved.
-5.  **State Capturer & Progress Agent:**
-    *   **`StateCapturer`**: Orchestration-level helper that extracts agent outputs (like JSON feedback) from the session history and persists them into the `session.state` for other agents to consume.
-    *   **`ProgressAgent`**: A lightweight agent that yields informational status messages (e.g., "🔍 Research is starting...") to the frontend via SSE.
-6.  **Content Builder (`agents/content_builder`):**
+4.  **Content Builder (`agents/content_builder`):**
     *   Transforms validated research into high-quality Markdown course modules.
-7.  **Web App (`app/`):**
+5.  **Web App (`app/`):**
     *   A FastAPI backend that streams agent events to a Vanilla TypeScript + Vite frontend using Server-Sent Events (SSE).
 
 ## Working with ADK & A2A
