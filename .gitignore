@@ -59,3 +59,5 @@ agents/orchestrator/.adk/
 agents/judge/.adk/
 agents/judge/agent.pid
 *.log
+
+agents/orchestrator/agent.pid

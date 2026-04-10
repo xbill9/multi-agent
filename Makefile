@@ -13,11 +13,13 @@ export GOOGLE_GENAI_USE_VERTEXAI = False
 export LOG_LEVEL = DEBUG
 export GENAI_MODEL = gemini-2.5-flash
 
-.PHONY: install run run-local restart-local local frontend lint test test-researcher test-judge test-content-builder test-orchestrator test-remote deploy destroy status check-local endpoint a2a clean help researcher content-builder judge orchestrator course-creator researcher-local judge-local content-builder-local orchestrator-local backend-local frontend-local agents-local stop-local start-local check-frontend build-images deploy-parallel
+.PHONY: install start run run-local restart-local local frontend lint test test-researcher test-judge test-content-builder test-orchestrator test-remote deploy destroy status check-local endpoint a2a clean help researcher content-builder judge orchestrator course-creator researcher-local judge-local content-builder-local orchestrator-local backend-local frontend-local agents-local stop-local start-local check-frontend build-images deploy-parallel
 
 help:
 	@echo "Available commands:"
 	@echo "  install               - Install all dependencies for root, agents, and app"
+	@echo "  start                 - Start all services locally (alias for start-local)"
+	@echo "  stop                  - Stop all local services (alias for stop-local)"
 	@echo "  run                   - Start all services locally (alias for start-local)"
 	@echo "  local                 - Show local service URLs"
 	@echo "  start-local           - Start all local services in background"
@@ -72,6 +74,8 @@ install:
 	cd app/frontend && npm install
 
 run: start-local
+
+start: start-local
 
 run-local: start-local
 
@@ -208,7 +212,7 @@ orchestrator:
 course-creator:
 	./deploy.sh course-creator
 
-status: check-local
+status: check-local local
 	@echo "\n--- Cloud Deployment Status ---"
 	@echo "Checking deployment status for AI Course Creator services..."
 	@gcloud run services list --filter="metadata.name:(researcher,content-builder,judge,orchestrator,course-creator)"

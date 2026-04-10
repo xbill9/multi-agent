@@ -1,10 +1,11 @@
 import asyncio
 import os
 
-from agents.researcher.agent import researcher
 from google.adk.runners import Runner
 from google.adk.sessions import InMemorySessionService
 from google.genai import types
+
+from agents.researcher.agent import researcher
 
 
 async def main():

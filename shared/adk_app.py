@@ -95,7 +95,7 @@ def main(
     # Determine if we are loading a single agent in the provided directory
     agent_root_py = Path(agents_dir) / "agent.py"
     agent_root_json = Path(agents_dir) / "agent.json"
-    
+
     # We'll pass this info to _prepare_a2a_agent_cards and use it for get_fast_api_app
     effective_agents_dir = agents_dir
     effective_agents = None
