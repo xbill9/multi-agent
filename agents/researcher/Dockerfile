@@ -15,4 +15,4 @@ ENV HOST 0.0.0.0
 
 # Run ADK API Server
 # Looking for agents/researcher/agent.py (AgentLoader expects the directory)
-CMD ["python3", "-m", "shared.adk_app", "/app/agents", "--host", "0.0.0.0", "--trace_to_cloud", "--a2a"]
+CMD ["python3", "-m", "shared.adk_app", "/app/agents/researcher", "--host", "0.0.0.0", "--trace_to_cloud", "--a2a"]

@@ -47,12 +47,12 @@ async def log_before_agent(callback_context: CallbackContext) -> genai_types.Con
 
         if findings and len(str(findings)) > 200:
             logger.info(f"Building course for topic '{topic}' (findings len: {len(str(findings))})")
-            # PASS ONLY FINDINGS AND TOPIC (no markdown headers in prompt)
+            # PASS ONLY FINDINGS AND TOPIC
             callback_context.user_content.parts = [genai_types.Part(text=f"Target Topic: {topic}\n\nResearch Findings:\n{findings}")]
-            return genai_types.Content(role="user", parts=callback_context.user_content.parts)
         else:
             logger.error("No findings found!")
-            return genai_types.Content(role="user", parts=[genai_types.Part(text="ERROR: No research findings available.")])
+            callback_context.user_content.parts = [genai_types.Part(text="ERROR: No research findings available.")]
+        return None
     except Exception as e:
         logger.exception(f"Error in Content Builder callback: {e}")
         return None

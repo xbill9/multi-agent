@@ -49,18 +49,15 @@ async def log_before_judge(callback_context: CallbackContext) -> genai_types.Con
 
     if findings and len(str(findings)) > 200:
         logger.info(f"[JUDGE] Evaluating research (length: {len(str(findings))})")
-        new_content = genai_types.Content(
-            role="user",
-            parts=[genai_types.Part(text=f"Please evaluate the following research findings:\n\n{findings}")]
-        )
-        callback_context.user_content.parts = new_content.parts
-        return new_content
+        callback_context.user_content.parts = [
+            genai_types.Part(text=f"Please evaluate the following research findings:\n\n{findings}")
+        ]
     else:
         logger.error("[JUDGE] No substantial research findings found to evaluate!")
-        return genai_types.Content(
-            role="user",
-            parts=[genai_types.Part(text="ERROR: No research findings were provided for evaluation. Please conduct research first.")]
-        )
+        callback_context.user_content.parts = [
+            genai_types.Part(text="ERROR: No research findings were provided for evaluation. Please conduct research first.")
+        ]
+    return None
 
 async def log_after_judge(callback_context: CallbackContext) -> None:
     """Log the result of the judge's evaluation."""

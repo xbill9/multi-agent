@@ -170,14 +170,11 @@ class ProgressAgent(BaseAgent):
 
     async def _run_async_impl(self, ctx: InvocationContext) -> AsyncGenerator[Event]:
         logger.info(f"[Progress] {self._message}")
-        # 1. Yield the progress message for the UI
+        # Yield the progress message for the UI
         yield Event(
             author=f"progress_{self._author}",
             content=Content(parts=[Part(text=self._message)])
         )
-        # 2. Re-yield the input content so it's passed to the next agent in the sequence
-        if ctx.user_content:
-            yield Event(author=self.name, content=ctx.user_content)
 
 # --- Remote Agents ---
 
