@@ -50,3 +50,12 @@ gemini31-lightsail/backend/app/__pycache__/
 gemini31-lightsail/backend/app/biometric_agent/__pycache__/
 
 __pycache__
+
+agents/researcher/.adk/
+agents/researcher/agent.pid
+agents/content_builder/.adk/
+agents/orchestrator/.adk/
+
+agents/judge/.adk/
+agents/judge/agent.pid
+*.log

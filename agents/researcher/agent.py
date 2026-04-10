@@ -22,18 +22,19 @@ async def log_before_researcher(callback_context: CallbackContext) -> None:
     """Ensure topic is correctly identified and passed to the model."""
     try:
         logger.info(f"Researcher starting for session: {callback_context.session.id}")
-        
+
         # Prioritize topic from state
         state_dict = callback_context.state.to_dict()
         topic = state_dict.get("topic")
-        
+
         # Extraction logic for history/metadata
         if not topic or any(x in str(topic) for x in ["said:", "[", "]"]):
             if callback_context.user_content and callback_context.user_content.parts:
                 for part in callback_context.user_content.parts:
                     if part.text:
                         text = part.text.replace("For context:", "").strip()
-                        if "said:" in text: text = text.split("said:", 1)[1].strip()
+                        if "said:" in text:
+                            text = text.split("said:", 1)[1].strip()
                         if text and not any(e in text for e in ["🔍", "⚖️", "🚀", "✍️", "⌛", "[SYSTEM]"]):
                             topic = text
                             callback_context.session.state["topic"] = topic
@@ -55,7 +56,7 @@ async def log_after_researcher(callback_context: CallbackContext) -> None:
     try:
         # Diagnostic: what attributes do we have?
         # logger.info(f"Researcher callback attributes: {dir(callback_context)}")
-        
+
         # In newer ADK versions, response might be in 'response'
         response = getattr(callback_context, "response", None)
         if response and hasattr(response, "parts"):

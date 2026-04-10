@@ -20,6 +20,10 @@ steps:
     args:
       - 'run'
       - 'deploy'
+      - '--min-instances'
+      - '0'
+      - '--max-instances'
+      - '1'
       - '${_SERVICE_NAME}'
       - '--image'
       - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPOSITORY}/${_SERVICE_NAME}:${BUILD_ID}'

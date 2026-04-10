@@ -23,11 +23,9 @@ async def test_invoke(url, agent_name, input_text):
             "message": {
                 "messageId": "msg-1",
                 "role": "user",
-                "parts": [
-                    {"text": input_text}
-                ]
+                "parts": [{"text": input_text}],
             }
-        }
+        },
     }
 
     print(f"--- Invoking Agent: {agent_name} ---")
@@ -62,6 +60,10 @@ if __name__ == "__main__":
 
     service_url = sys.argv[1]
     name = sys.argv[2]
-    text = sys.argv[3] if len(sys.argv) > 3 else "Python is a versatile programming language."
+    text = (
+        sys.argv[3]
+        if len(sys.argv) > 3
+        else "Python is a versatile programming language."
+    )
 
     asyncio.run(test_invoke(service_url, name, text))

@@ -19,7 +19,9 @@ async def test_log_after_judge_dict(caplog):
     from google.adk.agents.callback_context import CallbackContext
 
     mock_ctx = MagicMock(spec=CallbackContext)
-    mock_ctx.session.state = {"judge_evaluation": {"status": "pass", "feedback": "Good job"}}
+    mock_ctx.session.state = {
+        "judge_evaluation": {"status": "pass", "feedback": "Good job"}
+    }
 
     with caplog.at_level("INFO"):
         await log_after_judge(mock_ctx)

@@ -13,12 +13,13 @@ export GOOGLE_GENAI_USE_VERTEXAI = False
 export LOG_LEVEL = DEBUG
 export GENAI_MODEL = gemini-2.5-flash
 
-.PHONY: install run run-local restart-local frontend lint test test-researcher test-judge test-content-builder test-orchestrator test-remote deploy status check-local endpoint a2a clean help researcher content-builder judge orchestrator course-creator researcher-local judge-local content-builder-local orchestrator-local backend-local frontend-local agents-local stop-local start-local check-frontend build-images deploy-parallel
+.PHONY: install run run-local restart-local local frontend lint test test-researcher test-judge test-content-builder test-orchestrator test-remote deploy destroy status check-local endpoint a2a clean help researcher content-builder judge orchestrator course-creator researcher-local judge-local content-builder-local orchestrator-local backend-local frontend-local agents-local stop-local start-local check-frontend build-images deploy-parallel
 
 help:
 	@echo "Available commands:"
 	@echo "  install               - Install all dependencies for root, agents, and app"
 	@echo "  run                   - Start all services locally (alias for start-local)"
+	@echo "  local                 - Show local service URLs"
 	@echo "  start-local           - Start all local services in background"
 	@echo "  stop-local            - Stop all local processes"
 	@echo "  test                  - Run all tests (pytest)"
@@ -27,6 +28,7 @@ help:
 	@echo "  test-orchestrator     - Test the Orchestrator logic"
 	@echo "  lint                  - Run linting checks (ruff)"
 	@echo "  deploy                - Deploy all services to Cloud Run"
+	@echo "  destroy               - Delete all Cloud Run services"
 	@echo "  clean                 - Remove caches and logs"
 
 TEST_URL ?= http://localhost:8000
@@ -74,6 +76,8 @@ run: start-local
 run-local: start-local
 
 restart-local: start-local
+
+stop: stop-local
 
 check-frontend:
 	@if [ ! -d "app/dist" ]; then \
@@ -164,6 +168,15 @@ test-content-builder:
 
 deploy: deploy-parallel
 
+destroy:
+	@echo "Destroying Cloud Run services in $(GOOGLE_CLOUD_LOCATION)..."
+	@gcloud run services delete researcher --region $(GOOGLE_CLOUD_LOCATION) --quiet || true
+	@gcloud run services delete content-builder --region $(GOOGLE_CLOUD_LOCATION) --quiet || true
+	@gcloud run services delete judge --region $(GOOGLE_CLOUD_LOCATION) --quiet || true
+	@gcloud run services delete orchestrator --region $(GOOGLE_CLOUD_LOCATION) --quiet || true
+	@gcloud run services delete course-creator --region $(GOOGLE_CLOUD_LOCATION) --quiet || true
+	@echo "Destroy completed."
+
 build-images:
 	@if [ -z "${GOOGLE_CLOUD_PROJECT}" ]; then \
 		echo "ERROR: GOOGLE_CLOUD_PROJECT is not set. Run 'gcloud config set project' or set the variable."; \
@@ -195,9 +208,20 @@ orchestrator:
 course-creator:
 	./deploy.sh course-creator
 
-status:
+status: check-local
+	@echo "\n--- Cloud Deployment Status ---"
 	@echo "Checking deployment status for AI Course Creator services..."
 	@gcloud run services list --filter="metadata.name:(researcher,content-builder,judge,orchestrator,course-creator)"
+
+local:
+	@echo "--- Local Service URLs ---"
+	@echo "Frontend: http://localhost:5173"
+	@echo "Backend:  http://localhost:8000 (main app)"
+	@echo "Agents:"
+	@echo "  Researcher:      http://localhost:8001"
+	@echo "  Judge:           http://localhost:8002"
+	@echo "  Content Builder: http://localhost:8003"
+	@echo "  Orchestrator:    http://localhost:8004"
 
 check-local:
 	@echo "Checking status of locally running agents and servers..."

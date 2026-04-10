@@ -23,7 +23,7 @@ sys.path.insert(0, os.path.dirname(__file__))
 # Use default project from credentials if not in .env
 try:
     _, project_id = google.auth.default()
-    os.environ.setdefault("GOOGLE_CLOUD_PROJECT", project_id) # type: ignore
+    os.environ.setdefault("GOOGLE_CLOUD_PROJECT", project_id)  # type: ignore
 except Exception:
     # If no credentials available, continue without setting project
     pass

@@ -16,6 +16,10 @@ steps:
     args:
       - 'run'
       - 'deploy'
+      - '--min-instances'
+      - '0'
+      - '--max-instances'
+      - '1'
       - 'researcher'
       - '--image'
       - 'gcr.io/$PROJECT_ID/researcher'

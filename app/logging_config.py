@@ -33,12 +33,11 @@ def setup_logging(service_name: str | None = None, level: str | None = None):
     handler = logging.StreamHandler(sys.stdout)
 
     # Standard format for JSON logs
-    format_str = '%(asctime)s %(name)s %(levelname)s %(message)s %(filename)s %(lineno)d'
-
-    formatter = json.JsonFormatter(
-        format_str,
-        json_ensure_ascii=False
+    format_str = (
+        "%(asctime)s %(name)s %(levelname)s %(message)s %(filename)s %(lineno)d"
     )
+
+    formatter = json.JsonFormatter(format_str, json_ensure_ascii=False)
     handler.setFormatter(formatter)
 
     # Clear existing handlers to avoid duplicates
@@ -51,7 +50,11 @@ def setup_logging(service_name: str | None = None, level: str | None = None):
         logging.getLogger("httpx").setLevel(logging.WARNING)
 
     service = service_name or os.getenv("SERVICE_NAME", "unknown-service")
-    logging.info(f"Logging initialized for {service}", extra={"service": service, "log_level": level})
+    logging.info(
+        f"Logging initialized for {service}",
+        extra={"service": service, "log_level": level},
+    )
+
 
 def get_uvicorn_log_config(level: str = "info"):
     """Returns a dictionary configuration for uvicorn to use the JSON formatter."""
@@ -74,9 +77,14 @@ def get_uvicorn_log_config(level: str = "info"):
         "loggers": {
             "uvicorn": {"handlers": ["default"], "level": level.upper()},
             "uvicorn.error": {"level": level.upper()},
-            "uvicorn.access": {"handlers": ["default"], "level": level.upper(), "propagate": False},
+            "uvicorn.access": {
+                "handlers": ["default"],
+                "level": level.upper(),
+                "propagate": False,
+            },
         },
     }
+
 
 if __name__ == "__main__":
     # Test logging

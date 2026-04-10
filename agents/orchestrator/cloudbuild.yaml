@@ -44,14 +44,14 @@ steps:
         echo "  JUDGE: $judge_url"
         echo "  CONTENT_BUILDER: $content_builder_url"
 
-        gcloud run deploy orchestrator \
+        gcloud run deploy orchestrator --min-instances 0 --max-instances 1 \
           --image gcr.io/$PROJECT_ID/orchestrator \
           --region ${_REGION} \
           --platform managed \
           --allow-unauthenticated \
-          --set-env-vars "RESEARCHER_AGENT_CARD_URL=$$researcher_url/a2a/agent/.well-known/agent-card.json" \
-          --set-env-vars "JUDGE_AGENT_CARD_URL=$$judge_url/a2a/agent/.well-known/agent-card.json" \
-          --set-env-vars "CONTENT_BUILDER_AGENT_CARD_URL=$$content_builder_url/a2a/agent/.well-known/agent-card.json" \
+          --set-env-vars "RESEARCHER_AGENT_CARD_URL=$$researcher_url/a2a/researcher/.well-known/agent-card.json" \
+          --set-env-vars "JUDGE_AGENT_CARD_URL=$$judge_url/a2a/judge/.well-known/agent-card.json" \
+          --set-env-vars "CONTENT_BUILDER_AGENT_CARD_URL=$$content_builder_url/a2a/content_builder/.well-known/agent-card.json" \
           --set-env-vars "GOOGLE_CLOUD_PROJECT=$PROJECT_ID" \
           --set-env-vars "GOOGLE_GENAI_USE_VERTEXAI=false" \
           --set-env-vars "GOOGLE_API_KEY=${_GOOGLE_API_KEY}" \

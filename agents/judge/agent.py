@@ -15,19 +15,26 @@ logger = logging.getLogger(__name__)
 
 MODEL = os.getenv("GENAI_MODEL", "gemini-2.5-flash")
 
+
 class JudgeFeedback(BaseModel):
     """Feedback from the judge on the research quality."""
-    status: Literal["pass", "fail"] = Field(description="The status of the research: 'pass' or 'fail'.")
+
+    status: Literal["pass", "fail"] = Field(
+        description="The status of the research: 'pass' or 'fail'."
+    )
     feedback: str = Field(description="Detailed feedback on the research findings.")
 
-async def log_before_judge(callback_context: CallbackContext) -> genai_types.Content | None:
+
+async def log_before_judge(
+    callback_context: CallbackContext,
+) -> genai_types.Content | None:
     """Ensure research findings are correctly identified for evaluation."""
     logger.info(f"Judge starting for session: {callback_context.session.id}")
-    
+
     # Prioritize findings from state (if shared)
     state_dict = callback_context.state.to_dict()
     findings = state_dict.get("research_findings")
-    
+
     # Extraction logic for history/metadata
     if not findings or len(str(findings)) < 100:
         if callback_context.user_content and callback_context.user_content.parts:
@@ -36,28 +43,36 @@ async def log_before_judge(callback_context: CallbackContext) -> genai_types.Con
             for part in callback_context.user_content.parts:
                 if part.text:
                     text = part.text.replace("For context:", "").strip()
-                    if "said:" in text: text = text.split("said:", 1)[1].strip()
-                    
+                    if "said:" in text:
+                        text = text.split("said:", 1)[1].strip()
+
                     # Heuristic: Research reports are usually long and have Markdown
                     if len(text) > 500:
                         potential_findings.append(text)
-            
+
             if potential_findings:
                 findings = potential_findings[-1]
                 callback_context.session.state["research_findings"] = findings
-                logger.info(f"[JUDGE] Recovered findings from history (length: {len(findings)})")
+                logger.info(
+                    f"[JUDGE] Recovered findings from history (length: {len(findings)})"
+                )
 
     if findings and len(str(findings)) > 200:
         logger.info(f"[JUDGE] Evaluating research (length: {len(str(findings))})")
         callback_context.user_content.parts = [
-            genai_types.Part(text=f"Please evaluate the following research findings:\n\n{findings}")
+            genai_types.Part(
+                text=f"Please evaluate the following research findings:\n\n{findings}"
+            )
         ]
     else:
         logger.error("[JUDGE] No substantial research findings found to evaluate!")
         callback_context.user_content.parts = [
-            genai_types.Part(text="ERROR: No research findings were provided for evaluation. Please conduct research first.")
+            genai_types.Part(
+                text="ERROR: No research findings were provided for evaluation. Please conduct research first."
+            )
         ]
     return None
+
 
 async def log_after_judge(callback_context: CallbackContext) -> None:
     """Log the result of the judge's evaluation."""
@@ -65,14 +80,23 @@ async def log_after_judge(callback_context: CallbackContext) -> None:
     if evaluation:
         # Handle both dict and Pydantic object if needed
         is_dict = isinstance(evaluation, dict)
-        status = evaluation.get("status") if is_dict else getattr(evaluation, "status", "unknown")
-        feedback = evaluation.get("feedback") if is_dict else getattr(evaluation, "feedback", "")
+        status = (
+            evaluation.get("status")
+            if is_dict
+            else getattr(evaluation, "status", "unknown")
+        )
+        feedback = (
+            evaluation.get("feedback")
+            if is_dict
+            else getattr(evaluation, "feedback", "")
+        )
 
         logger.info(f"Judge evaluation complete. Status: {status}")
         if status == "fail":
             logger.warning(f"Research failed validation. Feedback: {feedback}")
         else:
             logger.debug(f"Research passed validation. Feedback: {feedback}")
+
 
 # Define the Judge Agent
 judge = Agent(

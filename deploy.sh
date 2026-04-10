@@ -41,7 +41,7 @@ build_images() {
 deploy_researcher() {
   echo "Deploying researcher..."
   IMAGE_NAME="gcr.io/${GOOGLE_CLOUD_PROJECT}/researcher"
-  gcloud run deploy researcher \
+  gcloud run deploy researcher --min-instances 0 --max-instances 1 \
     --image "${IMAGE_NAME}" \
     --project $GOOGLE_CLOUD_PROJECT \
     --region $REGION \
@@ -55,7 +55,7 @@ deploy_researcher() {
 deploy_content_builder() {
   echo "Deploying content-builder..."
   IMAGE_NAME="gcr.io/${GOOGLE_CLOUD_PROJECT}/content-builder"
-  gcloud run deploy content-builder \
+  gcloud run deploy content-builder --min-instances 0 --max-instances 1 \
     --image "${IMAGE_NAME}" \
     --project $GOOGLE_CLOUD_PROJECT \
     --region $REGION \
@@ -69,7 +69,7 @@ deploy_content_builder() {
 deploy_judge() {
   echo "Deploying judge..."
   IMAGE_NAME="gcr.io/${GOOGLE_CLOUD_PROJECT}/judge"
-  gcloud run deploy judge \
+  gcloud run deploy judge --min-instances 0 --max-instances 1 \
     --image "${IMAGE_NAME}" \
     --project $GOOGLE_CLOUD_PROJECT \
     --region $REGION \
@@ -87,7 +87,7 @@ deploy_orchestrator() {
   JUDGE_URL=$(gcloud run services describe judge --region $REGION --format='value(status.url)' --project $GOOGLE_CLOUD_PROJECT)
 
   IMAGE_NAME="gcr.io/${GOOGLE_CLOUD_PROJECT}/orchestrator"
-  gcloud run deploy orchestrator \
+  gcloud run deploy orchestrator --min-instances 0 --max-instances 1 \
     --image "${IMAGE_NAME}" \
     --project $GOOGLE_CLOUD_PROJECT \
     --region $REGION \
@@ -106,7 +106,7 @@ deploy_course_creator() {
   ORCHESTRATOR_URL=$(gcloud run services describe orchestrator --region $REGION --format='value(status.url)' --project $GOOGLE_CLOUD_PROJECT)
   
   IMAGE_NAME="gcr.io/${GOOGLE_CLOUD_PROJECT}/course-creator"
-  gcloud run deploy course-creator \
+  gcloud run deploy course-creator --min-instances 0 --max-instances 1 \
     --image "${IMAGE_NAME}" \
     --project $GOOGLE_CLOUD_PROJECT \
     --region $REGION \
