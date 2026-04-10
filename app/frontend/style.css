@@ -317,6 +317,12 @@ body {
     border-left-color: var(--primary-color);
 }
 
+.toc-sub-link {
+    padding-left: 28px;
+    font-size: 0.875rem;
+    color: var(--text-muted);
+}
+
 .course-main {
     flex-grow: 1;
     max-width: 750px; /* Optimal reading width */

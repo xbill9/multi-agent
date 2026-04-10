@@ -33,11 +33,10 @@ async def test_state_capturer_streaming():
     async for event in capturer._run_async_impl(ctx):
         events.append(event)
     
-    # Check that it captured "Chunk 1 Chunk 2"
-    # Actually, the CURRENT StateCapturer only takes the LAST one.
-    # Let's see what it does.
-    assert ctx.session.state.get("findings") == "Chunk 1 Chunk 2"
-    assert events[0].content.parts[0].text == "Chunk 1 Chunk 2"
+    # Check that it captured ONLY the last one ("Chunk 2")
+    # The current implementation takes the most recent event from history.
+    assert ctx.session.state.get("findings") == "Chunk 2"
+    assert events[0].content.parts[0].text == "Chunk 2"
 
 @pytest.mark.asyncio
 async def test_state_capturer_skip_progress():

@@ -20,8 +20,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         contentContainer.innerHTML = '<div class="error">Failed to render course content. Please try again.</div>';
     }
     
-    // Generate TOC from h2 elements
-    const headings = contentContainer.querySelectorAll('h2');
+    // Generate TOC from h2 and h3 elements
+    const headings = contentContainer.querySelectorAll('h2, h3');
     if (headings.length === 0) {
         const sidebar = document.querySelector('.course-sidebar') as HTMLElement;
         const layout = document.querySelector('.course-layout') as HTMLElement;
@@ -37,6 +37,10 @@ document.addEventListener('DOMContentLoaded', async () => {
             a.href = '#' + id;
             a.textContent = heading.textContent;
             a.classList.add('toc-link');
+            
+            if (heading.tagName.toLowerCase() === 'h3') {
+                a.classList.add('toc-sub-link');
+            }
             
             // Simple active state on click
             a.addEventListener('click', () => {

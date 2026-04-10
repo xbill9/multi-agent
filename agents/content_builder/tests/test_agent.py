@@ -9,7 +9,7 @@ def test_content_builder_agent_config():
 def test_content_builder_agent_instruction_contains_keywords():
     """Verify that the instruction includes key formatting keywords."""
     instruction = content_builder.instruction.lower()
-    assert "research_findings" in instruction
+    assert "research findings" in instruction
     assert "h1" in instruction or "#" in instruction
     assert "h2" in instruction or "##" in instruction
     assert "bullet points" in instruction
