@@ -61,3 +61,4 @@ agents/judge/agent.pid
 *.log
 
 agents/orchestrator/agent.pid
+agents/content_builder/agent.pid

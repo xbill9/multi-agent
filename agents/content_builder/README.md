@@ -36,7 +36,7 @@ make install
 
 Create a `.env` file or set the following environment variables:
 
-- `GOOGLE_API_KEY`: Your Google AI API key.
+- `GOOGLE_API_KEY` (or `GEMINI_API_KEY`): Your Google AI API key.
 - `GENAI_MODEL`: (Optional) The model to use (default: `gemini-2.5-flash`).
 
 ### Running Locally

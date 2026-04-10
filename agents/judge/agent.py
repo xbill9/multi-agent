@@ -1,6 +1,7 @@
 import logging
 import os
 from typing import Literal
+from datetime import datetime
 
 from google.adk.agents import Agent
 from google.adk.agents.callback_context import CallbackContext
@@ -30,6 +31,9 @@ async def log_before_judge(
 ) -> genai_types.Content | None:
     """Ensure research findings are correctly identified for evaluation."""
     logger.info(f"Judge starting for session: {callback_context.session.id}")
+
+    # Dynamically get the current date
+    current_date = datetime.now().strftime("%A, %B %d, %Y")
 
     # Prioritize findings from state (if shared)
     state_dict = callback_context.state.to_dict()
@@ -61,7 +65,9 @@ async def log_before_judge(
         logger.info(f"[JUDGE] Evaluating research (length: {len(str(findings))})")
         callback_context.user_content.parts = [
             genai_types.Part(
-                text=f"Please evaluate the following research findings:\n\n{findings}"
+                text=f"CURRENT CONTEXT: Today is {current_date}.\n"
+                     f"Treat 2025 and early 2026 events as established historical facts.\n\n"
+                     f"Please evaluate the following research findings:\n\n{findings}"
             )
         ]
     else:

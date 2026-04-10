@@ -21,16 +21,14 @@ ifneq (,$(wildcard ./.env))
     export
 endif
 
+# Support both GOOGLE_API_KEY and GEMINI_API_KEY
+GOOGLE_API_KEY ?= $(GEMINI_API_KEY)
+export GOOGLE_API_KEY
+
 TOPIC ?= Please generate a course module based on these findings.
 RESEARCH_FINDINGS ?= The Gemini 2.5 models are the latest from Google. They offer improved reasoning and speed. Key features include large context windows and native multimodal capabilities.
 
-.PHONY: help install run start stop lint format test clean build deploy a2a endpoint test-invoke status check-env test-local
-
-check-env:
-	@if [ -z "$(GOOGLE_API_KEY)" ]; then \
-		echo "Error: GOOGLE_API_KEY is not set. Please set it in .env or as an environment variable"; \
-		exit 1; \
-	fi
+.PHONY: help install run start stop lint format test clean build deploy a2a endpoint test-invoke status test-local
 
 help:
 	@echo "Available targets:"
@@ -67,10 +65,10 @@ status:
 install:
 	$(PIP) install -e .
 
-run: check-env
+run:
 	$(PYTHON) -m shared.adk_app .. --port $(PORT) --a2a
 
-start: check-env
+start:
 	@if lsof -Pi :$(PORT) -sTCP:LISTEN -t >/dev/null; then \
 		echo "Agent is already running on port $(PORT)"; \
 	else \
@@ -98,7 +96,7 @@ format:
 	ruff format .
 	ruff check . --fix
 
-test: check-env
+test:
 	$(PYTHON) -m pytest -W "ignore:[EXPERIMENTAL] feature FeatureName.PLUGGABLE_AUTH is enabled:UserWarning"
 
 clean:
@@ -111,7 +109,7 @@ clean:
 build:
 	gcloud builds submit --config cloudbuild.yaml .
 
-deploy: check-env
+deploy:
 	gcloud run deploy $(SERVICE_NAME) --min-instances 0 --max-instances 1 \
 		--source . \
 		--project $(GOOGLE_CLOUD_PROJECT) \
