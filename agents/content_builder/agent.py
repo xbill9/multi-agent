@@ -11,32 +11,51 @@ from shared.logging_config import setup_logging
 setup_logging("content_builder")
 logger = logging.getLogger(__name__)
 
-async def log_before_agent(callback_context: CallbackContext) -> None:
-    """Log before the agent starts and inject research findings into the context."""
-    logger.info(f"Agent {callback_context.agent_name} starting execution. Session: {callback_context.session}")
-    state_dict = callback_context.state.to_dict()
+async def log_before_agent(callback_context: CallbackContext) -> genai_types.Content | None:
+    """Ensure research findings are correctly identified for content generation."""
+    try:
+        logger.info(f"Content Builder starting for session: {callback_context.session.id}")
+        
+        state_dict = callback_context.state.to_dict()
+        topic = state_dict.get("topic")
+        findings = state_dict.get("research_findings")
+        
+        # Topic Recovery Heuristic
+        if not topic or "UNKNOWN" in str(topic):
+            if callback_context.user_content and callback_context.user_content.parts:
+                for part in callback_context.user_content.parts:
+                    if part.text:
+                        text = part.text.replace("For context:", "").strip()
+                        if "said:" in text: text = text.split("said:", 1)[1].strip()
+                        # Topic is usually short and at the beginning of history
+                        if text and len(text) > 2 and len(text) < 100 and not any(e in text for e in ["🔍", "⚖️"]):
+                            topic = text
+                            break
+        
+        if not topic: topic = "the requested topic"
 
-    findings = state_dict.get("research_findings")
+        # Findings Recovery (if not in state)
+        if not findings or len(str(findings)) < 500:
+            if callback_context.user_content and callback_context.user_content.parts:
+                for part in callback_context.user_content.parts:
+                    if part.text:
+                        text = part.text.replace("For context:", "").strip()
+                        if "said:" in text: text = text.split("said:", 1)[1].strip()
+                        if len(text) > 1000: # High threshold for actual report
+                            findings = text
+                            break
 
-    # Fallback for A2A: Look for findings in the session history if not in state
-    if not findings:
-        logger.info("research_findings not in state, searching session history...")
-        for event in reversed(callback_context.session.events):
-            if event.author == "researcher" and event.content:
-                text_parts = [p.text for p in event.content.parts if p.text]
-                if text_parts:
-                    findings = "\n".join(text_parts)
-                    logger.info(f"Found findings from history (author: {event.author})")
-                    break
-
-    if findings:
-        logger.info(f"Injecting research_findings into user context (length: {len(str(findings))})")
-        # Inject the findings into the first user message part to ensure the LLM sees them
-        if callback_context.user_content and callback_context.user_content.parts:
-            original_text = callback_context.user_content.parts[0].text or ""
-            callback_context.user_content.parts[0].text = f"RESEARCH FINDINGS:\n{findings}\n\nUSER QUERY:\n{original_text}"
-    else:
-        logger.warning("research_findings NOT found in state or history!")
+        if findings and len(str(findings)) > 200:
+            logger.info(f"Building course for topic '{topic}' (findings len: {len(str(findings))})")
+            # PASS ONLY FINDINGS AND TOPIC (no markdown headers in prompt)
+            callback_context.user_content.parts = [genai_types.Part(text=f"Target Topic: {topic}\n\nResearch Findings:\n{findings}")]
+            return genai_types.Content(role="user", parts=callback_context.user_content.parts)
+        else:
+            logger.error("No findings found!")
+            return genai_types.Content(role="user", parts=[genai_types.Part(text="ERROR: No research findings available.")])
+    except Exception as e:
+        logger.exception(f"Error in Content Builder callback: {e}")
+        return None
 
 async def log_after_agent(callback_context: CallbackContext) -> genai_types.Content | None:
     """Log after the agent finishes."""
@@ -51,14 +70,16 @@ content_builder = Agent(
     model=MODEL,
     description="Transforms research findings into high-quality Markdown course modules.",
     instruction="""
-    You are an expert content builder. Your goal is to transform research findings into a structured course module.
-
-    CRITICAL: The research findings are provided in the session state variable `research_findings`.
-    You MUST read these findings from the state and use them as the primary source for the course content.
-
-    Use H1 for the module title, H2 for main sections, and bullet points for lists.
-    Ensure that the content is accurate and easy to read.
-    Format the findings clearly using Markdown.
+    You are an expert content builder. 
+    
+    TASK: Transform the provided RESEARCH FINDINGS into a comprehensive Markdown course about the TARGET TOPIC.
+    
+    CRITICAL CONSTRAINTS:
+    1. START your response immediately with the Course Title using an H1 header (#).
+    2. DO NOT include any introductory text, preamble, or meta-commentary.
+    3. DO NOT echo the input findings, headers, or instructions.
+    4. FORMAT: Use H1 for Title, H2 for Modules, H3 for Sub-sections. Use bullet points for lists.
+    5. INTEGRITY: Ensure the output is a single, clean Markdown document with NO meta-data or labels.
     """,
     tools=[],
     before_agent_callback=log_before_agent,

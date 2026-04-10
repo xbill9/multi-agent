@@ -212,43 +212,44 @@ async def chat_stream(request: SimpleChatRequest):
         # Initial heartbeat
         yield json.dumps({"type": "progress", "text": "🚀 Connected to backend, starting research..."}) + "\n"
 
+        # Track seen events to avoid duplication from cumulative snapshots
+        author_accumulators = {}
+
         async for event in events:
             author = event.get("author", "")
             
-            # Check for errors in the event
+            # Check for errors
             error_msg = event.get("errorMessage")
             if error_msg:
                 yield json.dumps({"type": "progress", "text": f"❌ Error from {author}: {error_msg}"}) + "\n"
-                logger.error(f"Error from agent {author}: {error_msg}")
+                continue
 
             # Extract text parts helper
-            def extract_all_text(obj):
-                if isinstance(obj, str):
+            def extract_all_text(event_obj):
+                """Targeted extraction of text from ADK event content parts."""
+                if not isinstance(event_obj, dict):
                     return []
-                if isinstance(obj, dict):
-                    texts = []
-                    for k, v in obj.items():
-                        if k == "text" and isinstance(v, str):
-                            texts.append(v)
-                        else:
-                            texts.extend(extract_all_text(v))
-                    return texts
-                if isinstance(obj, list):
-                    texts = []
-                    for item in obj:
-                        texts.extend(extract_all_text(item))
-                    return texts
-                return []
+                texts = []
+                content = event_obj.get("content")
+                if isinstance(content, dict):
+                    parts = content.get("parts")
+                    if isinstance(parts, list):
+                        for part in parts:
+                            if isinstance(part, dict) and "text" in part:
+                                texts.append(part["text"])
+                return texts
 
             text_parts = extract_all_text(event)
+            event_text = "".join(text_parts)
+            if not event_text:
+                continue
             
             # 1. Handle explicit progress agents
             if author.startswith("progress_"):
-                for tp in text_parts:
-                    yield json.dumps({"type": "progress", "text": tp.strip()}) + "\n"
+                yield json.dumps({"type": "progress", "text": event_text.strip()}) + "\n"
                 continue
 
-            # 2. Handle progress updates for actual agents (UI updates)
+            # 2. UI Updates for main agents
             if author == "researcher":
                  yield json.dumps({"type": "progress", "text": "🔍 Researcher is gathering information..."}) + "\n"
             elif author == "judge":
@@ -256,21 +257,46 @@ async def chat_stream(request: SimpleChatRequest):
             elif author == "content_builder":
                  yield json.dumps({"type": "progress", "text": "✍️ Content Builder is writing the course..."}) + "\n"
 
-            # 3. Accumulate final text ONLY from content_builder
+            # 3. Robust Accumulation for final_text (Content Builder ONLY)
             if author == "content_builder":
-                for tp in text_parts:
-                    final_text += tp
+                # A truly robust greedy overlap deduplicator
+                def merge_strings(existing, incoming):
+                    if not existing: return incoming
+                    if not incoming: return existing
+                    e_norm = existing.rstrip()
+                    i_norm = incoming.lstrip()
+                    if not i_norm: return existing
+                    max_overlap = min(len(e_norm), len(i_norm), 500)
+                    for size in range(max_overlap, 0, -1):
+                        if e_norm.endswith(i_norm[:size]):
+                            norm_prefix = i_norm[:size]
+                            idx = incoming.find(norm_prefix)
+                            return existing + incoming[idx + size:]
+                    return existing + incoming
+
+                final_text = merge_strings(final_text, event_text)
 
         logger.info(f"Stream complete. Final text length: {len(final_text)}")
         
-        # Surgical cleanup for known progress messages using specific regex
+        # Final trim
+        final_text = final_text.strip()
+        
+        # Surgical cleanup for known progress messages or system leaks
         import re
+        # Remove progress messages
         final_text = re.sub(r"🚀\s*Starting the course creation pipeline\.\.\.", "", final_text)
         final_text = re.sub(r"✍️\s*Building the final course content\.\.\.", "", final_text)
         final_text = re.sub(r"🔍\s*Research is starting\.\.\.", "", final_text)
         final_text = re.sub(r"⚖️\s*Judge is evaluating findings\.\.\.", "", final_text)
         
-        # Final trim
+        # Remove system author markers if any leaked
+        final_text = re.sub(r"\[progress_.*\]\s*said:?", "", final_text, flags=re.IGNORECASE)
+        final_text = re.sub(r"\[capture_.*\]\s*said:?", "", final_text, flags=re.IGNORECASE)
+        final_text = re.sub(r"For context:?", "", final_text, flags=re.IGNORECASE)
+        
+        # Remove finding markers if they leaked
+        final_text = final_text.replace("RESEARCH_FINDINGS_START", "").replace("RESEARCH_FINDINGS_END", "")
+        
         final_text = final_text.strip()
         
         # Send final result

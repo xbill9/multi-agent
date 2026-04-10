@@ -6,16 +6,14 @@ pkill -9 -f "shared.adk_app" 2>/dev/null || true
 pkill -9 -f "main.py" 2>/dev/null || true
 pkill -9 -f "vite" 2>/dev/null || true
 
-# Use the Google Cloud SDK bundled Python 3.13
-PYTHON_CMD=/usr/lib/google-cloud-sdk/platform/bundledpythonunix/bin/python3
-if [ ! -f "$PYTHON_CMD" ]; then
-  PYTHON_CMD=python3
-fi
+# Use the current python3 from environment
+PYTHON_CMD=$(which python3)
 
 # Set common environment variables for local development
 if [ -f ".env" ]; then
   source .env
 fi
+export PYTHONPATH=$PYTHONPATH:.
 export GOOGLE_CLOUD_PROJECT="${GOOGLE_CLOUD_PROJECT}"
 export GOOGLE_CLOUD_LOCATION="${GOOGLE_CLOUD_LOCATION:-us-central1}"
 export GOOGLE_GENAI_USE_VERTEXAI="False"

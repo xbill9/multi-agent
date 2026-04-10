@@ -1,7 +1,10 @@
 # Makefile for AI Course Creator (Multi-Agent System)
 
-# Use the Google Cloud SDK bundled Python 3.13 if available, otherwise fallback to python3
-PYTHON_CMD ?= $(shell if [ -f /usr/lib/google-cloud-sdk/platform/bundledpythonunix/bin/python3 ]; then echo /usr/lib/google-cloud-sdk/platform/bundledpythonunix/bin/python3; else echo python3; fi)
+# Use the current python3 from environment
+PYTHON_CMD ?= $(shell which python3)
+
+# Set PYTHONPATH to include the project root for shared modules
+export PYTHONPATH := $(shell pwd):$(PYTHONPATH)
 
 # Environment variables for local development
 export GOOGLE_CLOUD_PROJECT ?= $(shell gcloud config get-value project 2>/dev/null)

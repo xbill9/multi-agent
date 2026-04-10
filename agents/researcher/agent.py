@@ -11,37 +11,74 @@ os.environ["ADK_SUPPRESS_EXPERIMENTAL_FEATURE_WARNINGS"] = "True"
 os.environ.setdefault("GOOGLE_CLOUD_LOCATION", "global")
 os.environ.setdefault("GOOGLE_GENAI_USE_VERTEXAI", "False")
 
+from google.adk.agents.callback_context import CallbackContext
+from google.genai import types as genai_types
+
 # Initialize standardized logging
 setup_logging("researcher")
 logger = logging.getLogger(__name__)
 
-# Use Pro for better synthesis
+async def log_before_researcher(callback_context: CallbackContext) -> None:
+    """Ensure topic is correctly identified and passed to the model."""
+    try:
+        logger.info(f"Researcher starting for session: {callback_context.session.id}")
+        
+        # Prioritize topic from state
+        state_dict = callback_context.state.to_dict()
+        topic = state_dict.get("topic")
+        
+        # Extraction logic for history/metadata
+        if not topic or any(x in str(topic) for x in ["said:", "[", "]"]):
+            if callback_context.user_content and callback_context.user_content.parts:
+                for part in callback_context.user_content.parts:
+                    if part.text:
+                        text = part.text.replace("For context:", "").strip()
+                        if "said:" in text: text = text.split("said:", 1)[1].strip()
+                        if text and not any(e in text for e in ["🔍", "⚖️", "🚀", "✍️", "⌛", "[SYSTEM]"]):
+                            topic = text
+                            callback_context.session.state["topic"] = topic
+                            break
+
+        if topic:
+            logger.info(f"[RESEARCHER] Active topic: '{topic}'")
+            # Update in-place
+            callback_context.user_content.parts = [
+                genai_types.Part(text=f"Produce a comprehensive Markdown research report on the following topic: {topic}. Use the google_search tool if available, otherwise use your internal knowledge. Include history, key figures, and impact.")
+            ]
+        else:
+            logger.error("[RESEARCHER] No topic found!")
+    except Exception as e:
+        logger.exception(f"[RESEARCHER] Error in before_agent_callback: {e}")
+
+async def log_after_researcher(callback_context: CallbackContext) -> None:
+    """Log the output of the researcher."""
+    try:
+        # Diagnostic: what attributes do we have?
+        # logger.info(f"Researcher callback attributes: {dir(callback_context)}")
+        
+        # In newer ADK versions, response might be in 'response'
+        response = getattr(callback_context, "response", None)
+        if response and hasattr(response, "parts"):
+            text = "".join([p.text for p in response.parts if p.text])
+            logger.info(f"Researcher finished. Output length: {len(text)}")
+        else:
+            logger.warning("Researcher callback: 'response' not found or has no parts.")
+    except Exception as e:
+        logger.error(f"Error in log_after_researcher: {e}")
+    return None
+
+# Use Flash for speed
 MODEL = os.getenv("GENAI_MODEL", "gemini-2.5-flash")
 
 # Define the Researcher Agent
 researcher = Agent(
     name="researcher",
     model=MODEL,
-    description="Gathers information on a topic using Google Search.",
-    instruction="""
-    You are an expert researcher. Your goal is to find comprehensive and accurate information on the user's topic.
-
-    ### STEP-BY-STEP:
-    1. **Initial Search**: Use the `google_search` tool to gather broad information.
-    2. **Analysis**: Critically analyze the search results. If the tool returns irrelevant information (e.g., only current time for a history query), do NOT accept it as a valid answer.
-    3. **Refined Search**: If the initial results are insufficient or irrelevant, try at least one more search with a different, more specific query.
-    4. **Synthesis & Fallback**:
-       - If search succeeds, summarize the findings with **citations** and source URLs.
-       - If the search tool consistently fails or provides irrelevant results, use your extensive internal knowledge to provide a comprehensive and accurate report.
-       - Clearly state if you are using internal knowledge due to technical limitations with the information retrieval tool.
-
-    ### CRITICAL:
-    - Your response MUST be a detailed Markdown report covering history, geography, culture, economy, and landmarks where applicable.
-    - **Citations**: ALWAYS include a 'Sources' or 'References' section at the end. If based on internal knowledge, cite general historical and geographical consensus.
-    - Do NOT just list search queries.
-    - Ensure the report is high-quality and ready to be used by a content builder for a course module.
-    """,
+    description="Gathers information on a topic.",
+    instruction="You are a professional researcher. Always provide a detailed Markdown report with multiple sections and citations/sources.",
     tools=[google_search],
+    before_agent_callback=log_before_researcher,
+    after_agent_callback=log_after_researcher,
 )
 
 logger.info(f"Initialized researcher agent with model: {MODEL}")
