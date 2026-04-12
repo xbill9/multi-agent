@@ -89,6 +89,13 @@ def main(
     # Standardized logging setup
     setup_logging(os.path.basename(agents_dir), log_level)
 
+    # Prevent ADK from auto-enabling Cloud Trace if we are not explicitly asking for it
+    # This avoids crashes when GOOGLE_CLOUD_PROJECT is set but ADC is missing (e.g., on AKS)
+    if not trace_to_cloud and not otel_to_cloud:
+        os.environ["OTEL_SDK_DISABLED"] = "true"
+        os.environ["ADK_OTEL_DISABLED"] = "True"
+        os.environ["ADK_TRACE_DISABLED"] = "True"
+
     files_to_cleanup = []
     folders_to_cleanup = []
 

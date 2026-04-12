@@ -7,13 +7,10 @@ PYTHON_CMD ?= $(shell which python3)
 export PYTHONPATH := $(shell pwd):$(PYTHONPATH)
 
 # Environment variables for local development
-export GOOGLE_CLOUD_PROJECT ?= $(shell gcloud config get-value project 2>/dev/null)
-export GOOGLE_CLOUD_LOCATION ?= us-central1
-export GOOGLE_GENAI_USE_VERTEXAI = False
 export LOG_LEVEL = DEBUG
 export GENAI_MODEL = gemini-2.5-flash
 
-.PHONY: install start run run-local restart-local local frontend lint test test-researcher test-judge test-content-builder test-orchestrator test-remote deploy destroy status check-local endpoint a2a clean help researcher content-builder judge orchestrator course-creator researcher-local judge-local content-builder-local orchestrator-local backend-local frontend-local agents-local stop-local start-local check-frontend build-images deploy-parallel
+.PHONY: install start run run-local restart-local local frontend lint test test-researcher test-judge test-content-builder test-orchestrator local researcher content-builder judge orchestrator course-creator researcher-local judge-local content-builder-local orchestrator-local backend-local frontend-local agents-local stop-local start-local check-frontend build-images deploy-aks destroy-aks status-aks endpoint-aks az-destroy clean help
 
 help:
 	@echo "Available commands:"
@@ -28,49 +25,34 @@ help:
 	@echo "  test-researcher       - Test the Researcher agent directly"
 	@echo "  test-judge            - Test the Judge agent directly"
 	@echo "  test-orchestrator     - Test the Orchestrator logic"
-	@echo "  test-e2e-gke          - Run GKE E2E test (Full Flow)"
+	@echo "  e2e-test-aks          - Run end-to-end test against the AKS endpoint"
 	@echo "  lint                  - Run linting checks (ruff)"
-	@echo "  deploy                - Deploy all services to Cloud Run"
-	@echo "  deploy-gke            - Deploy all services to GKE"
-	@echo "  destroy               - Delete all Cloud Run services"
-	@echo "  destroy-gke           - Delete GKE resources"
-	@echo "  status                - Show Cloud Run status"
-	@echo "  status-gke            - Show GKE status"
-	@echo "  endpoint              - Show Cloud Run service URLs"
-	@echo "  endpoint-gke          - Show GKE service endpoint"
+	@echo "  deploy-aks            - Deploy all services to Azure AKS"
+	@echo "  destroy-aks           - Delete AKS resources"
+	@echo "  status-aks            - Show AKS status"
+	@echo "  endpoint-aks          - Show AKS service endpoint"
+	@echo "  az-destroy            - Delete the entire Azure Resource Group"
 	@echo "  clean                 - Remove caches and logs"
 
 TEST_URL ?= http://localhost:8000
 TEST_MESSAGE ?= "Create a short course about the history of the internet"
 e2e-test:
 	@echo "Running end-to-end test against $(TEST_URL)..."
-	@curl -s -X POST $(TEST_URL)/api/chat_stream \
+	@curl -s --fail -X POST $(TEST_URL)/api/chat_stream \
 		-H "Content-Type: application/json" \
 		-d '{"message": $(TEST_MESSAGE), "user_id": "e2e_test_user"}' \
 		--no-buffer \
 		|| (echo "E2E Test Failed: No valid response from $(TEST_URL)" && exit 1)
 	@echo "\nE2E Test Completed successfully!"
 
-e2e-test-cloud:
-	@CC_URL=$$(gcloud run services describe course-creator --format='value(status.url)' --region $(GOOGLE_CLOUD_LOCATION) 2>/dev/null); \
-	if [ -z "$$CC_URL" ]; then \
-		echo "ERROR: Could not find course-creator service URL in region $(GOOGLE_CLOUD_LOCATION). Is it deployed?"; \
+e2e-test-aks:
+	@echo "Fetching AKS LoadBalancer IP..."
+	@IP=$$(kubectl get svc course-creator -o jsonpath='{.status.loadBalancer.ingress[0].ip}'); \
+	if [ -z "$$IP" ]; then \
+		echo "Error: AKS LoadBalancer IP not found or still pending."; \
 		exit 1; \
 	fi; \
-	$(MAKE) e2e-test TEST_URL=$$CC_URL
-
-test-remote:
-	@CC_URL=$$(gcloud run services describe course-creator --format='value(status.url)' --region $(GOOGLE_CLOUD_LOCATION) 2>/dev/null); \
-	if [ -z "$$CC_URL" ]; then \
-		echo "ERROR: Could not find course-creator service URL in region $(GOOGLE_CLOUD_LOCATION). Is it deployed?"; \
-		exit 1; \
-	fi; \
-	echo "Testing remote flow at $$CC_URL..."; \
-	curl -s -X POST "$$CC_URL/api/chat_stream" \
-		-H "Content-Type: application/json" \
-		-d '{"message": "Basics of Quantum Computing", "user_id": "remote_test_user"}' \
-		--no-buffer | grep --line-buffered -E "type|text" || (echo "Remote Test Failed" && exit 1)
-	@echo "\nRemote flow test completed!"
+	$(MAKE) e2e-test TEST_URL=http://$$IP
 
 install:
 	@echo "Installing root dependencies..."
@@ -177,67 +159,32 @@ test-orchestrator:
 test-content-builder:
 	python agents/content_builder/tests/test_agent.py
 
-deploy: deploy-parallel
+deploy: deploy-aks
 
-deploy-gke:
-	./gke/deploy.sh
+deploy-aks:
+	./aks/deploy-aks.sh
 
-destroy:
-	@echo "Destroying Cloud Run services in $(GOOGLE_CLOUD_LOCATION)..."
-	@gcloud run services delete researcher --region $(GOOGLE_CLOUD_LOCATION) --quiet || true
-	@gcloud run services delete content-builder --region $(GOOGLE_CLOUD_LOCATION) --quiet || true
-	@gcloud run services delete judge --region $(GOOGLE_CLOUD_LOCATION) --quiet || true
-	@gcloud run services delete orchestrator --region $(GOOGLE_CLOUD_LOCATION) --quiet || true
-	@gcloud run services delete course-creator --region $(GOOGLE_CLOUD_LOCATION) --quiet || true
-	@echo "Destroy completed."
+destroy-aks:
+	@echo "Destroying AKS resources..."
+	kubectl delete -f aks/manifests.yaml || true
+	kubectl delete secret adk-secrets || true
+	@echo "Note: This does not delete the AKS cluster. Use az-destroy if you want to delete the whole group."
 
-destroy-gke:
-	@echo "Destroying GKE resources..."
-	kubectl delete -f gke/manifests.yaml || true
-	kubectl delete secret multi-agent-secrets || true
-	@echo "Note: This does not delete the GKE cluster. To delete the cluster run:"
-	@echo "gcloud container clusters delete multi-agent-cluster --region $(GOOGLE_CLOUD_LOCATION)"
+az-destroy:
+	@AZ_RESOURCE_GROUP=$${AZ_RESOURCE_GROUP:-"adk-rg-aks"}; \
+	echo "Destroying Azure Resource Group $$AZ_RESOURCE_GROUP..."; \
+	az group delete --name "$$AZ_RESOURCE_GROUP" --yes --no-wait; \
+	echo "Resource Group deletion initiated."
 
-build-images:
-	@if [ -z "${GOOGLE_CLOUD_PROJECT}" ]; then \
-		echo "ERROR: GOOGLE_CLOUD_PROJECT is not set. Run 'gcloud config set project' or set the variable."; \
-		exit 1; \
-	fi
-	@echo "Building all images using Cloud Build for project ${GOOGLE_CLOUD_PROJECT}..."
-	gcloud builds submit --project "${GOOGLE_CLOUD_PROJECT}" --config cloudbuild.yaml .
+status: status-aks
 
-deploy-parallel: build-images
-	@echo "Deploying sub-agents in parallel..."
-	@$(MAKE) -j 3 researcher content-builder judge
-	@echo "Deploying orchestrator..."
-	@$(MAKE) orchestrator
-	@echo "Deploying course-creator app..."
-	@$(MAKE) course-creator
+status-aks:
+	@echo "Checking AKS Deployment status..."
+	@kubectl get deployments
+	@kubectl get pods
+	@kubectl get services
 
-researcher:
-	./deploy.sh researcher
-
-content-builder:
-	./deploy.sh content-builder
-
-judge:
-	./deploy.sh judge
-
-orchestrator:
-	./deploy.sh orchestrator
-
-course-creator:
-	./deploy.sh course-creator
-
-status: check-local local
-	@echo "\n--- Cloud Deployment Status ---"
-	@echo "Checking deployment status for AI Course Creator services..."
-	@gcloud run services list --filter="metadata.name:(researcher,content-builder,judge,orchestrator,course-creator)"
-
-status-gke:
-	./gke/status.sh
-
-gke-status: status-gke
+aks-status: status-aks
 
 local:
 	@echo "--- Local Service URLs ---"
@@ -256,22 +203,12 @@ check-local:
 	@echo "--- Process Status ---"
 	@ps aux | grep -E "[s]hared[.]adk_app|[m]ain[.]py|[v]ite" || echo "No matching processes found."
 
-test-e2e-gke:
-	@./gke/test_e2e_gke.sh
+endpoint: endpoint-aks
 
-endpoint:
-	@echo "Service URLs:"
-	@gcloud run services list --filter="metadata.name:(researcher,content-builder,judge,orchestrator,course-creator)" --format="table(name,status.url)"
-
-endpoint-gke:
-	./gke/endpoint.sh
-
-a2a:
-	@echo "A2A Endpoints (from agents/):"
-	@AGENTS=$$(find agents -maxdepth 2 \( -name "agent.json" -o -name "agent.py" \) | xargs -n1 dirname | xargs -n1 basename | sort -u | paste -sd, -); \
-	gcloud run services list --filter="metadata.name:($$AGENTS)" --format="value(status.url,metadata.name)" | while read url name; do \
-		echo "$$name: $$url/a2a/$$name"; \
-	done
+endpoint-aks:
+	@echo "--- Azure AKS Endpoint ---"
+	@kubectl get svc course-creator -o jsonpath='{.status.loadBalancer.ingress[0].ip}' 2>/dev/null || echo "Pending..."
+	@echo ""
 
 clean:
 	@echo "Cleaning up caches and temporary files..."

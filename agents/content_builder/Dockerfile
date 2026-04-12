@@ -14,4 +14,4 @@ ENV PYTHONUNBUFFERED=1
 ENV HOST 0.0.0.0
 
 # Run ADK API Server
-CMD ["python3", "-m", "shared.adk_app", "/app/agents/content_builder", "--host", "0.0.0.0", "--trace_to_cloud", "--a2a"]
+CMD ["python3", "-m", "shared.adk_app", "/app/agents/content_builder", "--host", "0.0.0.0", "--a2a"]

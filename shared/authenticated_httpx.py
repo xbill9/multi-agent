@@ -43,10 +43,10 @@ class _IdentityTokenAuth(httpx.Auth):
         if self.session and self.session.credentials:
             id_token = self.session.credentials.token
 
-        # 2. If no token, attempt to fetch from Cloud Metadata or Local gcloud
+        # 2. If no token, attempt to fetch from Identity Provider or Local gcloud
         if not id_token:
             try:
-                # Attempt Cloud Metadata fetch (works on Cloud Run/GCE)
+                # Attempt metadata fetch (works on some cloud environments)
                 credentials = fetch_id_token_credentials(audience=self.root_url)
                 credentials.refresh(Request())
                 self.session = AuthorizedSession(credentials)
@@ -110,7 +110,7 @@ def create_authenticated_client(
     """Creates an httpx.AsyncClient with Google identity token authentication.
 
     Identity tokens are automatically sourced from the environment:
-      - In GCP (Cloud Run, GKE, etc.): Uses the Service Account's metadata server.
+      - In Azure AKS (if using Google Identity tokens): Uses the metadata server if available.
       - Locally: Uses 'gcloud auth print-identity-token'.
 
     Args:

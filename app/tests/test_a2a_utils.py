@@ -16,7 +16,7 @@ async def test_a2a_card_dispatch_rewrites_url():
             content=json.dumps(card), status_code=200, media_type="application/json"
         )
 
-    # Mock request with x-forwarded headers (Cloud Run style)
+    # Mock request with x-forwarded headers (Load Balancer style)
     scope = {
         "type": "http",
         "method": "GET",

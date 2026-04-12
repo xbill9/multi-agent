@@ -14,9 +14,6 @@ from fastapi.responses import StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from httpx_sse import aconnect_sse
 from logging_config import get_uvicorn_log_config, setup_logging
-from opentelemetry import trace
-from opentelemetry.exporter.cloud_trace import CloudTraceSpanExporter
-from opentelemetry.sdk.trace import TracerProvider, export
 from pydantic import BaseModel
 from starlette.middleware.base import BaseHTTPMiddleware
 
@@ -32,12 +29,24 @@ class Feedback(BaseModel):
 setup_logging("course-creator-web")
 logger = logging.getLogger(__name__)
 
-provider = TracerProvider()
-processor = export.BatchSpanProcessor(
-    CloudTraceSpanExporter(),
-)
-provider.add_span_processor(processor)
-trace.set_tracer_provider(provider)
+# Optional tracing setup
+if os.getenv("ENABLE_TRACING", "false").lower() == "true":
+    try:
+        from opentelemetry import trace
+        from opentelemetry.exporter.cloud_trace import CloudTraceSpanExporter
+        from opentelemetry.sdk.trace import TracerProvider, export
+
+        provider = TracerProvider()
+        processor = export.BatchSpanProcessor(
+            CloudTraceSpanExporter(),
+        )
+        provider.add_span_processor(processor)
+        trace.set_tracer_provider(provider)
+        logger.info("Cloud Trace enabled")
+    except Exception as e:
+        logger.warning(f"Failed to initialize Cloud Trace: {e}")
+else:
+    logger.info("Cloud Trace disabled (set ENABLE_TRACING=true to enable)")
 
 app = FastAPI()
 

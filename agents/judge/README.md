@@ -24,8 +24,6 @@ The included `Makefile` provides targets for common tasks:
 - `make test`: Run the test suite using `pytest`.
 - `make lint`: Run code linting with `ruff`.
 - `make format`: Format code with `ruff`.
-- `make deploy`: Build and deploy the agent to Google Cloud Run.
-- `make logs`: View logs from the Cloud Run service.
 
 ## API Integration
 

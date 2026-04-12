@@ -1,6 +1,6 @@
-# AI Course Creator (Distributed Multi-Agent System)
+# AI Course Creator (Distributed Multi-Agent System - Azure AKS)
 
-A multi-agent system built with Google's Agent Development Kit (ADK) and Agent-to-Agent (A2A) protocol. It features a team of specialized microservice agents that research, judge, and build content, orchestrated to deliver high-quality educational modules.
+A multi-agent system built with Google's Agent Development Kit (ADK) and Agent-to-Agent (A2A) protocol, deployed on **Azure Kubernetes Service (AKS)**. It features a team of specialized microservice agents that research, judge, and build content, orchestrated to deliver high-quality educational modules.
 
 ## Architecture
 
@@ -27,12 +27,9 @@ multi-agent/
 │   ├── adk_app.py        # Standardized ADK FastAPI wrapper
 │   ├── authenticated_httpx.py # Service-to-service auth utilities
 │   └── logging_config.py # Centralized logging configuration
+├── aks/                  # Azure AKS deployment manifests and scripts
 ├── Makefile              # Development shortcuts
 ├── run_local.sh          # Local development startup script
-├── deploy.sh             # Cloud Run deployment script
-├── init.sh               # Project creation and billing setup script
-├── init2.sh              # Service enablement and environment initialization
-├── set_adc.sh            # GCloud Application Default Credentials setup
 ├── set_env.sh            # Local .env generation script
 └── *_test.sh             # Agent-specific testing scripts
 ```
@@ -41,27 +38,23 @@ multi-agent/
 
 *   **Python 3.13+**
 *   **Node.js & npm**: For frontend development and builds.
-*   **pip** or **uv**: For dependency management.
-*   **Google Cloud SDK**: For authentication and deployment.
-*   **Google API Key**: Required for Gemini (unless using Vertex AI).
+*   **Docker**: For building and pushing images.
+*   **Azure CLI**: For managing Azure resources.
+*   **kubectl**: For interacting with the AKS cluster.
+*   **Google API Key**: Required for Gemini.
 
 ## Quick Start
 
 1.  **Initialize Environment:**
     ```bash
-    # Create project and enable billing (if needed)
-    ./init.sh
-    # Enable services and set up .env
-    ./init2.sh
+    # Set up .env
+    ./set_env.sh
     ```
 
 2.  **Install Dependencies:**
     ```bash
     # This installs root, agents, app, and frontend dependencies
     make install
-    
-    # Optional: using uv
-    uv sync
     ```
 
 3.  **Run Locally:**
@@ -86,23 +79,28 @@ Or run the full suite:
 make test
 ```
 
-### Direct Agent Testing
-You can test an agent directly without the A2A protocol using a Python script. This is useful for debugging:
-```bash
-python test_researcher_direct.py
-```
+## Deployment to Azure AKS
 
-## Deployment
+The system is configured for deployment to **Azure Kubernetes Service (AKS)**.
 
-The system is designed to be deployed to **Google Cloud Run**.
-
-1.  **Configure Environment:**
-    Set `GOOGLE_API_KEY` or ensure Vertex AI is enabled.
-    Set `GENAI_MODEL` to `gemini-2.5-flash` (recommended).
-
-2.  **Run Deployment Script:**
+1.  **Login to Azure:**
     ```bash
-    ./deploy.sh
+    az login
+    ```
+
+2.  **Run Deployment:**
+    ```bash
+    make deploy-aks
+    ```
+
+3.  **Check Status:**
+    ```bash
+    make status-aks
+    ```
+
+4.  **Get Endpoint:**
+    ```bash
+    make endpoint-aks
     ```
 
 ## Recommended Models

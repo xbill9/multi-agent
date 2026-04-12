@@ -48,7 +48,7 @@ fi
 export PYTHONPATH="${SCRIPT_DIR}/../../:${PYTHONPATH}"
 python3 -m shared.adk_app --host "0.0.0.0" --port ${PORT} \
     --a2a \
-    --trace_to_cloud \
+    \
     ${SESSION_SERVICE_PARAMETER} \
     ${MEMORY_SERVICE_PARAMETER} \
     ${ARTIFACT_SERVICE_PARAMETER} \

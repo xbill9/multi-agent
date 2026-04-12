@@ -63,7 +63,6 @@ make test-invoke TOPIC="The impact of AI on software engineering"
 
 ## Deployment
 
-The agent is designed to be deployed to Google Cloud Run. Use the provided `Makefile` target for deployment:
 ```bash
 make deploy
 ```

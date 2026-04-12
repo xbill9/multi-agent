@@ -54,13 +54,11 @@ The agent will start on port `8003` by default.
 
 ## Deployment
 
-The agent is designed to be deployed to **Google Cloud Run**.
 
 ```bash
 make deploy
 ```
 
-This will build the container using Cloud Build and deploy it to Cloud Run with the necessary environment variables and service configurations.
 
 ## API Specification
 

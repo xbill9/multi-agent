@@ -37,7 +37,7 @@ async def a2a_card_dispatch(
 
     Ensures that the agent's internal URL matches the public-facing URL (protocol,
     hostname, and port) from the request headers. This is critical for agents
-    behind proxies like Cloud Run or Load Balancers.
+    behind proxies like Load Balancers.
     """
     response = await call_next(request)
 
