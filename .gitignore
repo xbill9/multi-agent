@@ -62,3 +62,5 @@ agents/judge/agent.pid
 
 agents/orchestrator/agent.pid
 agents/content_builder/agent.pid
+
+.requirements_installed

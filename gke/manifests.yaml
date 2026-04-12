@@ -1,0 +1,221 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: researcher
+spec:
+  selector:
+    app: researcher
+  ports:
+    - protocol: TCP
+      port: 8000
+      targetPort: 8000
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: researcher
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: researcher
+  template:
+    metadata:
+      labels:
+        app: researcher
+    spec:
+      containers:
+      - name: researcher
+        image: gcr.io/PROJECT_ID/researcher
+        ports:
+        - containerPort: 8000
+        env:
+        - name: GOOGLE_CLOUD_PROJECT
+          value: "PROJECT_ID"
+        - name: GOOGLE_GENAI_USE_VERTEXAI
+          value: "false"
+        - name: GOOGLE_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: multi-agent-secrets
+              key: GOOGLE_API_KEY
+        - name: GENAI_MODEL
+          value: "gemini-2.5-flash"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: judge
+spec:
+  selector:
+    app: judge
+  ports:
+    - protocol: TCP
+      port: 8000
+      targetPort: 8000
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: judge
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: judge
+  template:
+    metadata:
+      labels:
+        app: judge
+    spec:
+      containers:
+      - name: judge
+        image: gcr.io/PROJECT_ID/judge
+        ports:
+        - containerPort: 8000
+        env:
+        - name: GOOGLE_CLOUD_PROJECT
+          value: "PROJECT_ID"
+        - name: GOOGLE_GENAI_USE_VERTEXAI
+          value: "false"
+        - name: GOOGLE_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: multi-agent-secrets
+              key: GOOGLE_API_KEY
+        - name: GENAI_MODEL
+          value: "gemini-2.5-flash"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: content-builder
+spec:
+  selector:
+    app: content-builder
+  ports:
+    - protocol: TCP
+      port: 8000
+      targetPort: 8000
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: content-builder
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: content-builder
+  template:
+    metadata:
+      labels:
+        app: content-builder
+    spec:
+      containers:
+      - name: content-builder
+        image: gcr.io/PROJECT_ID/content-builder
+        ports:
+        - containerPort: 8000
+        env:
+        - name: GOOGLE_CLOUD_PROJECT
+          value: "PROJECT_ID"
+        - name: GOOGLE_GENAI_USE_VERTEXAI
+          value: "false"
+        - name: GOOGLE_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: multi-agent-secrets
+              key: GOOGLE_API_KEY
+        - name: GENAI_MODEL
+          value: "gemini-2.5-flash"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: orchestrator
+spec:
+  selector:
+    app: orchestrator
+  ports:
+    - protocol: TCP
+      port: 8000
+      targetPort: 8000
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: orchestrator
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: orchestrator
+  template:
+    metadata:
+      labels:
+        app: orchestrator
+    spec:
+      containers:
+      - name: orchestrator
+        image: gcr.io/PROJECT_ID/orchestrator
+        ports:
+        - containerPort: 8000
+        env:
+        - name: GOOGLE_CLOUD_PROJECT
+          value: "PROJECT_ID"
+        - name: GOOGLE_GENAI_USE_VERTEXAI
+          value: "false"
+        - name: GOOGLE_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: multi-agent-secrets
+              key: GOOGLE_API_KEY
+        - name: GENAI_MODEL
+          value: "gemini-2.5-flash"
+        - name: RESEARCHER_AGENT_CARD_URL
+          value: "http://researcher:8000/a2a/researcher/.well-known/agent-card.json"
+        - name: JUDGE_AGENT_CARD_URL
+          value: "http://judge:8000/a2a/judge/.well-known/agent-card.json"
+        - name: CONTENT_BUILDER_AGENT_CARD_URL
+          value: "http://content-builder:8000/a2a/content_builder/.well-known/agent-card.json"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: course-creator
+spec:
+  selector:
+    app: course-creator
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 8080
+  type: LoadBalancer
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: course-creator
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: course-creator
+  template:
+    metadata:
+      labels:
+        app: course-creator
+    spec:
+      containers:
+      - name: course-creator
+        image: gcr.io/PROJECT_ID/course-creator
+        ports:
+        - containerPort: 8080
+        env:
+        - name: GOOGLE_CLOUD_PROJECT
+          value: "PROJECT_ID"
+        - name: AGENT_SERVER_URL
+          value: "http://orchestrator:8000"
+        - name: AGENT_NAME
+          value: "orchestrator"

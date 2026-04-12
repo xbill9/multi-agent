@@ -28,9 +28,16 @@ help:
 	@echo "  test-researcher       - Test the Researcher agent directly"
 	@echo "  test-judge            - Test the Judge agent directly"
 	@echo "  test-orchestrator     - Test the Orchestrator logic"
+	@echo "  test-e2e-gke          - Run GKE E2E test (Full Flow)"
 	@echo "  lint                  - Run linting checks (ruff)"
 	@echo "  deploy                - Deploy all services to Cloud Run"
+	@echo "  deploy-gke            - Deploy all services to GKE"
 	@echo "  destroy               - Delete all Cloud Run services"
+	@echo "  destroy-gke           - Delete GKE resources"
+	@echo "  status                - Show Cloud Run status"
+	@echo "  status-gke            - Show GKE status"
+	@echo "  endpoint              - Show Cloud Run service URLs"
+	@echo "  endpoint-gke          - Show GKE service endpoint"
 	@echo "  clean                 - Remove caches and logs"
 
 TEST_URL ?= http://localhost:8000
@@ -172,6 +179,9 @@ test-content-builder:
 
 deploy: deploy-parallel
 
+deploy-gke:
+	./gke/deploy.sh
+
 destroy:
 	@echo "Destroying Cloud Run services in $(GOOGLE_CLOUD_LOCATION)..."
 	@gcloud run services delete researcher --region $(GOOGLE_CLOUD_LOCATION) --quiet || true
@@ -180,6 +190,13 @@ destroy:
 	@gcloud run services delete orchestrator --region $(GOOGLE_CLOUD_LOCATION) --quiet || true
 	@gcloud run services delete course-creator --region $(GOOGLE_CLOUD_LOCATION) --quiet || true
 	@echo "Destroy completed."
+
+destroy-gke:
+	@echo "Destroying GKE resources..."
+	kubectl delete -f gke/manifests.yaml || true
+	kubectl delete secret multi-agent-secrets || true
+	@echo "Note: This does not delete the GKE cluster. To delete the cluster run:"
+	@echo "gcloud container clusters delete multi-agent-cluster --region $(GOOGLE_CLOUD_LOCATION)"
 
 build-images:
 	@if [ -z "${GOOGLE_CLOUD_PROJECT}" ]; then \
@@ -217,6 +234,11 @@ status: check-local local
 	@echo "Checking deployment status for AI Course Creator services..."
 	@gcloud run services list --filter="metadata.name:(researcher,content-builder,judge,orchestrator,course-creator)"
 
+status-gke:
+	./gke/status.sh
+
+gke-status: status-gke
+
 local:
 	@echo "--- Local Service URLs ---"
 	@echo "Frontend: http://localhost:5173"
@@ -234,9 +256,15 @@ check-local:
 	@echo "--- Process Status ---"
 	@ps aux | grep -E "[s]hared[.]adk_app|[m]ain[.]py|[v]ite" || echo "No matching processes found."
 
+test-e2e-gke:
+	@./gke/test_e2e_gke.sh
+
 endpoint:
 	@echo "Service URLs:"
 	@gcloud run services list --filter="metadata.name:(researcher,content-builder,judge,orchestrator,course-creator)" --format="table(name,status.url)"
+
+endpoint-gke:
+	./gke/endpoint.sh
 
 a2a:
 	@echo "A2A Endpoints (from agents/):"
